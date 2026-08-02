@@ -1,2 +1,11 @@
 # FinTrack-AI
-This repository contains code for Finance Tracking.
+
+## Problem Statement
+
+## Features
+
+## Architecture
+
+## Technology Stack
+
+## Roadmap
