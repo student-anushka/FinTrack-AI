@@ -1,1 +1,1 @@
-
+FinTrack AI is a cloud-native finance platform that helps users understand, manage and improve their financial health through proper expense tracking, budgeting, analytics and AI-powered financial insights.
