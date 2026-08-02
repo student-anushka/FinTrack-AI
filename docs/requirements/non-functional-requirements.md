@@ -1,1 +1,1 @@
-
+Non-Functional Requirements | These distinguish production software | Our Goals : Secure Authentication, Password Encryption, Response Time < 500ms for common APIs, Scalable Architecture, Docker Deployment, API documentation, Logging, Monitoring, Automated Testing, Fault tolerance. 
