@@ -5,9 +5,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class HelloService {
 
-    public String sayHello() {
+    public String sayHello(String name) {
 
-        return "Hello Anushka!\nWelcome to FinTrack AI.";
+        return "Hello " + name + "!\nWelcome to FinTrack AI.";
 
     }
 

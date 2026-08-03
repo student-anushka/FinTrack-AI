@@ -1,11 +1,10 @@
 package com.fintrack.controller;
 
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.fintrack.service.HelloService;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequestMapping("/api/v1")
 public class HelloController {
 
     private final HelloService helloService;
@@ -14,11 +13,10 @@ public class HelloController {
         this.helloService = helloService;
     }
 
-    @GetMapping("/api/v1/hello")
-    public String sayHello() {
+    @GetMapping("/hello/{name}")
+    public String sayHello(@PathVariable String name) {
 
-        return helloService.sayHello();
+        return helloService.sayHello(name);
 
     }
-
 }
