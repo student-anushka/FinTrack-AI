@@ -4,6 +4,7 @@ import com.fintrack.auth.dto.RegisterRequest;
 import com.fintrack.auth.dto.response.RegisterResponse;
 import com.fintrack.auth.entity.User;
 import com.fintrack.auth.repository.UserRepository;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -12,31 +13,39 @@ import java.time.LocalDateTime;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final BCryptPasswordEncoder passwordEncoder;
 
-    public AuthService(UserRepository userRepository) {
+    public AuthService(UserRepository userRepository,
+                       BCryptPasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public RegisterResponse register(RegisterRequest request) {
 
-    if (userRepository.existsByEmail(request.getEmail())) {
-        return new RegisterResponse("Email already exists!");
+        // Check if email already exists
+        if (userRepository.existsByEmail(request.getEmail())) {
+            return new RegisterResponse("Email already exists!");
+        }
+
+        // Create new user
+        User user = new User();
+
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
+        user.setEmail(request.getEmail());
+
+        // Encrypt password before saving
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+
+        user.setRole("USER");
+        user.setEmailVerified(false);
+        user.setCreatedAt(LocalDateTime.now());
+        user.setUpdatedAt(LocalDateTime.now());
+
+        // Save user
+        userRepository.save(user);
+
+        return new RegisterResponse("User Registered Successfully!");
     }
-
-    User user = new User();
-
-    user.setFirstName(request.getFirstName());
-    user.setLastName(request.getLastName());
-    user.setEmail(request.getEmail());
-    user.setPassword(request.getPassword());
-    user.setRole("USER");
-    user.setEmailVerified(false);
-    user.setCreatedAt(LocalDateTime.now());
-    user.setUpdatedAt(LocalDateTime.now());
-
-    userRepository.save(user);
-
-    return new RegisterResponse("User Registered Successfully!");
-
-}
 }

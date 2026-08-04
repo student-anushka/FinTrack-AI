@@ -1,9 +1,9 @@
 package com.fintrack.auth.controller;
 
-import jakarta.validation.Valid;
 import com.fintrack.auth.dto.RegisterRequest;
 import com.fintrack.auth.dto.response.RegisterResponse;
 import com.fintrack.auth.service.AuthService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,5 +22,4 @@ public class AuthController {
         return authService.register(request);
 
     }
-
 }
