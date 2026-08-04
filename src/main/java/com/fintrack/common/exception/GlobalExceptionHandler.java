@@ -8,13 +8,22 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse> handleException(Exception ex) {
+    // @ExceptionHandler(Exception.class)
+    // public ResponseEntity<ApiResponse> handleException(Exception ex) {
 
-        ApiResponse response = new ApiResponse(500, ex.getMessage());
+    //     ApiResponse response = new ApiResponse(500, ex.getMessage());
 
-        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+    //     return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
 
+    // }
+
+    @ExceptionHandler(EmailAlreadyExistsException.class)
+    public ResponseEntity<ApiResponse> handleEmailAlreadyExists(
+            EmailAlreadyExistsException ex) {
+
+        ApiResponse response = new ApiResponse(409, ex.getMessage());
+
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
 }

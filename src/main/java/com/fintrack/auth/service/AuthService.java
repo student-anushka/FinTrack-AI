@@ -3,6 +3,8 @@ import com.fintrack.auth.dto.RegisterRequest;
 import com.fintrack.auth.dto.response.RegisterResponse;
 import com.fintrack.auth.entity.User;
 import com.fintrack.auth.repository.UserRepository;
+import com.fintrack.common.exception.EmailAlreadyExistsException;
+
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.fintrack.auth.dto.LoginRequest;
@@ -47,7 +49,7 @@ public class AuthService {
         // Save user
         userRepository.save(user);
 
-        return new RegisterResponse("User Registered Successfully!");
+        throw new EmailAlreadyExistsException("Email already exists");
     }
 
     public LoginResponse login(LoginRequest request) {
