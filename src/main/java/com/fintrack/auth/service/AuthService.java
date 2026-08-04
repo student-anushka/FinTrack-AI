@@ -1,12 +1,13 @@
 package com.fintrack.auth.service;
-
 import com.fintrack.auth.dto.RegisterRequest;
 import com.fintrack.auth.dto.response.RegisterResponse;
 import com.fintrack.auth.entity.User;
 import com.fintrack.auth.repository.UserRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-
+import com.fintrack.auth.dto.LoginRequest;
+import com.fintrack.auth.dto.response.LoginResponse;
+import java.util.Optional;
 import java.time.LocalDateTime;
 
 @Service
@@ -48,4 +49,22 @@ public class AuthService {
 
         return new RegisterResponse("User Registered Successfully!");
     }
+
+    public LoginResponse login(LoginRequest request) {
+
+        Optional<User> userOptional = userRepository.findByEmail(request.getEmail());
+
+        if (userOptional.isEmpty()) {
+            return new LoginResponse("User not found");
+        }
+
+        User user = userOptional.get();
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            return new LoginResponse("Invalid Password");
+        }
+
+        return new LoginResponse("Login Successful");
+    }
+
 }
