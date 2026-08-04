@@ -1,6 +1,7 @@
 package com.fintrack.auth.service;
 
 import com.fintrack.auth.dto.RegisterRequest;
+import com.fintrack.auth.dto.response.RegisterResponse;
 import com.fintrack.auth.entity.User;
 import com.fintrack.auth.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -18,19 +19,24 @@ public class AuthService {
 
     public RegisterResponse register(RegisterRequest request) {
 
-        User user = new User();
-
-        user.setFirstName(request.getFirstName());
-        user.setLastName(request.getLastName());
-        user.setEmail(request.getEmail());
-        user.setPassword(request.getPassword());
-        user.setRole("USER");
-        user.setEmailVerified(false);
-        user.setCreatedAt(LocalDateTime.now());
-        user.setUpdatedAt(LocalDateTime.now());
-
-        userRepository.save(user);
-
-        return new RegisterResponse("User Registered Successfully!");
+    if (userRepository.existsByEmail(request.getEmail())) {
+        return new RegisterResponse("Email already exists!");
     }
+
+    User user = new User();
+
+    user.setFirstName(request.getFirstName());
+    user.setLastName(request.getLastName());
+    user.setEmail(request.getEmail());
+    user.setPassword(request.getPassword());
+    user.setRole("USER");
+    user.setEmailVerified(false);
+    user.setCreatedAt(LocalDateTime.now());
+    user.setUpdatedAt(LocalDateTime.now());
+
+    userRepository.save(user);
+
+    return new RegisterResponse("User Registered Successfully!");
+
+}
 }
