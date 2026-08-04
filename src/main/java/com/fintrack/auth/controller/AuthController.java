@@ -7,6 +7,8 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 import com.fintrack.auth.dto.LoginRequest;
 import com.fintrack.auth.dto.response.LoginResponse;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -19,16 +21,20 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public RegisterResponse register(@Valid @RequestBody RegisterRequest request) {
+public ResponseEntity<RegisterResponse> register(
+        @Valid @RequestBody RegisterRequest request) {
 
-        return authService.register(request);
+    RegisterResponse response = authService.register(request);
 
-    }
+    return new ResponseEntity<>(response, HttpStatus.CREATED);
+}
 
     @PostMapping("/login")
-    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
+public ResponseEntity<LoginResponse> login(
+        @Valid @RequestBody LoginRequest request) {
 
-        return authService.login(request);
+    LoginResponse response = authService.login(request);
 
-    }
+    return ResponseEntity.ok(response);
+}
 }
