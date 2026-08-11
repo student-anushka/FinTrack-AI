@@ -8,6 +8,10 @@ public class LoginResponse {
     public LoginResponse() {
     }
 
+    public LoginResponse(String message) {
+        this.message = message;
+    }
+
     public LoginResponse(String message, String token) {
         this.message = message;
         this.token = token;
