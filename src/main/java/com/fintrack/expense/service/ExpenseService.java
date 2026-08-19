@@ -2,7 +2,9 @@ package com.fintrack.expense.service;
 
 import com.fintrack.auth.entity.User;
 import com.fintrack.auth.repository.UserRepository;
+import com.fintrack.common.exception.InvalidExpenseException;
 import com.fintrack.expense.dto.CreateExpenseRequest;
+import com.fintrack.expense.dto.ExpenseResponse;
 import com.fintrack.expense.entity.Category;
 import com.fintrack.expense.entity.Expense;
 import com.fintrack.expense.repository.CategoryRepository;
@@ -31,7 +33,7 @@ public class ExpenseService {
         this.userRepository = userRepository;
     }
 
-    public Expense createExpense(
+    public ExpenseResponse createExpense(
             CreateExpenseRequest request,
             Authentication authentication) {
 
@@ -44,8 +46,8 @@ public class ExpenseService {
 
         // 3. Validate expense date
         if (request.getExpenseDate().isAfter(LocalDate.now())) {
-            throw new IllegalArgumentException(
-                    "Expense date cannot be in the future");
+            throw new InvalidExpenseException(
+        "Expense date cannot be in the future");
         }
 
         // 4. Find category
@@ -73,6 +75,17 @@ public class ExpenseService {
         expense.setUpdatedAt(LocalDateTime.now());
 
         // 9. Save to database
-        return expenseRepository.save(expense);
+        Expense savedExpense = expenseRepository.save(expense);
+
+        // 10. Convert Entity to Response DTO
+        return new ExpenseResponse(
+                savedExpense.getId(),
+                savedExpense.getTitle(),
+                savedExpense.getAmount(),
+                savedExpense.getDescription(),
+                savedExpense.getExpenseDate(),
+                savedExpense.getPaymentMethod(),
+                savedExpense.getCategory().getId(),
+                savedExpense.getCategory().getName());
     }
 }
