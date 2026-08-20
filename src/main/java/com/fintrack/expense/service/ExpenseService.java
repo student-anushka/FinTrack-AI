@@ -12,7 +12,7 @@ import com.fintrack.expense.repository.ExpenseRepository;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
-
+import java.util.List;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -87,5 +87,33 @@ public class ExpenseService {
                 savedExpense.getPaymentMethod(),
                 savedExpense.getCategory().getId(),
                 savedExpense.getCategory().getName());
+    }
+
+    public List<ExpenseResponse> getMyExpenses(
+            Authentication authentication) {
+
+        // 1. Get authenticated user's email from JWT
+        String email = authentication.getName();
+
+        // 2. Find the authenticated user
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // 3. Find only this user's expenses
+        List<Expense> expenses = expenseRepository.findByUserIdOrderByExpenseDateDesc(
+                user.getId());
+
+        // 4. Convert entities to response DTOs
+        return expenses.stream()
+                .map(expense -> new ExpenseResponse(
+                        expense.getId(),
+                        expense.getTitle(),
+                        expense.getAmount(),
+                        expense.getDescription(),
+                        expense.getExpenseDate(),
+                        expense.getPaymentMethod(),
+                        expense.getCategory().getId(),
+                        expense.getCategory().getName()))
+                .toList();
     }
 }
