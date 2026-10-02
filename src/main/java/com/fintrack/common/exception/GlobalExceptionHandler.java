@@ -10,20 +10,27 @@ public class GlobalExceptionHandler {
 
     // @ExceptionHandler(Exception.class)
     // public ResponseEntity<ApiResponse> handleException(Exception ex) {
-
     //     ApiResponse response = new ApiResponse(500, ex.getMessage());
-
     //     return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
-
     // }
 
     @ExceptionHandler(EmailAlreadyExistsException.class)
     public ResponseEntity<ApiResponse> handleEmailAlreadyExists(
-            EmailAlreadyExistsException ex) {
-
+        EmailAlreadyExistsException ex) {
         ApiResponse response = new ApiResponse(409, ex.getMessage());
-
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
+
+    @ExceptionHandler(ExpenseNotFoundException.class)
+    public ResponseEntity<ApiResponse> handleExpenseNotFound(
+        ExpenseNotFoundException ex) {
+
+        ApiResponse response = new ApiResponse(
+        HttpStatus.NOT_FOUND.value(),
+        ex.getMessage());
+
+        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+    }
+
 
 }

@@ -2,6 +2,8 @@ package com.fintrack.expense.service;
 
 import com.fintrack.auth.entity.User;
 import com.fintrack.auth.repository.UserRepository;
+import com.fintrack.common.exception.CategoryNotFoundException;
+import com.fintrack.common.exception.ExpenseNotFoundException;
 import com.fintrack.common.exception.InvalidExpenseException;
 import com.fintrack.expense.dto.CreateExpenseRequest;
 import com.fintrack.expense.dto.ExpenseResponse;
@@ -12,9 +14,10 @@ import com.fintrack.expense.repository.ExpenseRepository;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
-import java.util.List;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class ExpenseService {
@@ -33,29 +36,20 @@ public class ExpenseService {
         this.userRepository = userRepository;
     }
 
+    // =========================
+    // CREATE EXPENSE
+    // =========================
+
     public ExpenseResponse createExpense(
             CreateExpenseRequest request,
             Authentication authentication) {
 
-        // 1. Get authenticated user's email from JWT
-        String email = authentication.getName();
+        User user = getAuthenticatedUser(authentication);
 
-        // 2. Find the user in database
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        validateExpenseDate(request.getExpenseDate());
 
-        // 3. Validate expense date
-        if (request.getExpenseDate().isAfter(LocalDate.now())) {
-            throw new InvalidExpenseException(
-        "Expense date cannot be in the future");
-        }
+        Category category = getCategory(request.getCategoryId());
 
-        // 4. Find category
-        Category category = categoryRepository
-                .findById(request.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("Category not found"));
-
-        // 5. Create Expense entity
         Expense expense = new Expense();
 
         expense.setTitle(request.getTitle());
@@ -63,57 +57,154 @@ public class ExpenseService {
         expense.setDescription(request.getDescription());
         expense.setExpenseDate(request.getExpenseDate());
         expense.setPaymentMethod(request.getPaymentMethod());
-
-        // 6. Connect expense with authenticated user
         expense.setUser(user);
-
-        // 7. Connect expense with category
         expense.setCategory(category);
 
-        // 8. Set audit timestamps
-        expense.setCreatedAt(LocalDateTime.now());
-        expense.setUpdatedAt(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
 
-        // 9. Save to database
+        expense.setCreatedAt(now);
+        expense.setUpdatedAt(now);
+
         Expense savedExpense = expenseRepository.save(expense);
 
-        // 10. Convert Entity to Response DTO
-        return new ExpenseResponse(
-                savedExpense.getId(),
-                savedExpense.getTitle(),
-                savedExpense.getAmount(),
-                savedExpense.getDescription(),
-                savedExpense.getExpenseDate(),
-                savedExpense.getPaymentMethod(),
-                savedExpense.getCategory().getId(),
-                savedExpense.getCategory().getName());
+        return mapToResponse(savedExpense);
     }
+
+    // =========================
+    // GET MY EXPENSES
+    // =========================
 
     public List<ExpenseResponse> getMyExpenses(
             Authentication authentication) {
 
-        // 1. Get authenticated user's email from JWT
+        User user = getAuthenticatedUser(authentication);
+
+        List<Expense> expenses =
+                expenseRepository.findByUserIdOrderByExpenseDateDesc(
+                        user.getId());
+
+        return expenses.stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    // =========================
+    // GET EXPENSE BY ID
+    // =========================
+
+    public ExpenseResponse getExpenseById(
+            Long expenseId,
+            Authentication authentication) {
+
+        User user = getAuthenticatedUser(authentication);
+
+        Expense expense = expenseRepository
+                .findByIdAndUserId(expenseId, user.getId())
+                .orElseThrow(() ->
+                        new ExpenseNotFoundException(
+                                "Expense not found"));
+
+        return mapToResponse(expense);
+    }
+
+    // =========================
+    // UPDATE EXPENSE
+    // =========================
+
+    public ExpenseResponse updateExpense(
+            Long expenseId,
+            CreateExpenseRequest request,
+            Authentication authentication) {
+
+        User user = getAuthenticatedUser(authentication);
+
+        Expense expense = expenseRepository
+                .findByIdAndUserId(expenseId, user.getId())
+                .orElseThrow(() ->
+                        new ExpenseNotFoundException(
+                                "Expense not found"));
+
+        validateExpenseDate(request.getExpenseDate());
+
+        Category category = getCategory(request.getCategoryId());
+
+        expense.setTitle(request.getTitle());
+        expense.setAmount(request.getAmount());
+        expense.setDescription(request.getDescription());
+        expense.setExpenseDate(request.getExpenseDate());
+        expense.setPaymentMethod(request.getPaymentMethod());
+        expense.setCategory(category);
+
+        expense.setUpdatedAt(LocalDateTime.now());
+
+        Expense updatedExpense = expenseRepository.save(expense);
+
+        return mapToResponse(updatedExpense);
+    }
+
+    // =========================
+    // DELETE EXPENSE
+    // =========================
+
+    public void deleteExpense(
+            Long expenseId,
+            Authentication authentication) {
+
+        User user = getAuthenticatedUser(authentication);
+
+        Expense expense = expenseRepository
+                .findByIdAndUserId(expenseId, user.getId())
+                .orElseThrow(() ->
+                        new ExpenseNotFoundException(
+                                "Expense not found"));
+
+        expenseRepository.delete(expense);
+    }
+
+    // =========================
+    // HELPER METHODS
+    // =========================
+
+    private User getAuthenticatedUser(
+            Authentication authentication) {
+
         String email = authentication.getName();
 
-        // 2. Find the authenticated user
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        return userRepository
+                .findByEmail(email)
+                .orElseThrow(() ->
+                        new RuntimeException("User not found"));
+    }
 
-        // 3. Find only this user's expenses
-        List<Expense> expenses = expenseRepository.findByUserIdOrderByExpenseDateDesc(
-                user.getId());
+    private Category getCategory(Long categoryId) {
 
-        // 4. Convert entities to response DTOs
-        return expenses.stream()
-                .map(expense -> new ExpenseResponse(
-                        expense.getId(),
-                        expense.getTitle(),
-                        expense.getAmount(),
-                        expense.getDescription(),
-                        expense.getExpenseDate(),
-                        expense.getPaymentMethod(),
-                        expense.getCategory().getId(),
-                        expense.getCategory().getName()))
-                .toList();
+        return categoryRepository
+                .findById(categoryId)
+                .orElseThrow(() ->
+                        new CategoryNotFoundException(
+                                "Category not found"));
+    }
+
+    private void validateExpenseDate(LocalDate expenseDate) {
+
+        if (expenseDate.isAfter(LocalDate.now())) {
+
+            throw new InvalidExpenseException(
+                    "Expense date cannot be in the future");
+        }
+    }
+
+    private ExpenseResponse mapToResponse(Expense expense) {
+
+        return new ExpenseResponse(
+                expense.getId(),
+                expense.getTitle(),
+                expense.getAmount(),
+                expense.getDescription(),
+                expense.getExpenseDate(),
+                expense.getPaymentMethod(),
+                expense.getCategory().getId(),
+                expense.getCategory().getName()
+        );
     }
 }
