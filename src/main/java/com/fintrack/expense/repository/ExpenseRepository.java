@@ -2,14 +2,15 @@ package com.fintrack.expense.repository;
 
 import com.fintrack.expense.entity.Expense;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-import java.util.List;
 import java.util.Optional;
-public interface ExpenseRepository extends JpaRepository<Expense, Long> {
 
-    List<Expense> findByUserId(Long userId);
+public interface ExpenseRepository
+        extends JpaRepository<Expense, Long>,
+        JpaSpecificationExecutor<Expense> {
 
-    List<Expense> findByUserIdOrderByExpenseDateDesc(Long userId);
-
-    Optional<Expense> findByIdAndUserId(Long id, Long userId);
+    Optional<Expense> findByIdAndUserId(
+            Long id,
+            Long userId);
 }

@@ -1,24 +1,19 @@
 package com.fintrack.expense.controller;
 
-import java.util.List;
-
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.fintrack.expense.dto.CreateExpenseRequest;
+import com.fintrack.expense.dto.ExpensePageResponse;
 import com.fintrack.expense.dto.ExpenseResponse;
 import com.fintrack.expense.service.ExpenseService;
 
 import jakarta.validation.Valid;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/v1/expenses")
@@ -26,11 +21,16 @@ public class ExpenseController {
 
     private final ExpenseService expenseService;
 
-    public ExpenseController(ExpenseService expenseService) {
+    public ExpenseController(
+            ExpenseService expenseService) {
+
         this.expenseService = expenseService;
     }
 
+    // =========================
     // CREATE
+    // =========================
+
     @PostMapping
     public ResponseEntity<ExpenseResponse> createExpense(
             @Valid @RequestBody CreateExpenseRequest request,
@@ -45,17 +45,55 @@ public class ExpenseController {
                 HttpStatus.CREATED);
     }
 
-    // GET ALL MY EXPENSES
+    // =========================
+    // GET / SEARCH / FILTER
+    // =========================
+
     @GetMapping
-    public ResponseEntity<List<ExpenseResponse>> getMyExpenses(
-            Authentication authentication) {
+    public ResponseEntity<ExpensePageResponse> getMyExpenses(
 
-        List<ExpenseResponse> expenses = expenseService.getMyExpenses(authentication);
+            Authentication authentication,
 
-        return ResponseEntity.ok(expenses);
+            @RequestParam(defaultValue = "0") int page,
+
+            @RequestParam(defaultValue = "10") int size,
+
+            @RequestParam(defaultValue = "expenseDate") String sortBy,
+
+            @RequestParam(defaultValue = "desc") String direction,
+
+            @RequestParam(required = false) Long categoryId,
+
+            @RequestParam(required = false) LocalDate startDate,
+
+            @RequestParam(required = false) LocalDate endDate,
+
+            @RequestParam(required = false) BigDecimal minAmount,
+
+            @RequestParam(required = false) BigDecimal maxAmount,
+
+            @RequestParam(required = false) String search) {
+
+        ExpensePageResponse response = expenseService.filterExpenses(
+                authentication,
+                categoryId,
+                startDate,
+                endDate,
+                minAmount,
+                maxAmount,
+                search,
+                page,
+                size,
+                sortBy,
+                direction);
+
+        return ResponseEntity.ok(response);
     }
 
+    // =========================
     // GET BY ID
+    // =========================
+
     @GetMapping("/{expenseId}")
     public ResponseEntity<ExpenseResponse> getExpenseById(
             @PathVariable Long expenseId,
@@ -68,11 +106,16 @@ public class ExpenseController {
         return ResponseEntity.ok(response);
     }
 
+    // =========================
     // UPDATE
+    // =========================
+
     @PutMapping("/{expenseId}")
     public ResponseEntity<ExpenseResponse> updateExpense(
             @PathVariable Long expenseId,
+
             @Valid @RequestBody CreateExpenseRequest request,
+
             Authentication authentication) {
 
         ExpenseResponse response = expenseService.updateExpense(
@@ -83,7 +126,10 @@ public class ExpenseController {
         return ResponseEntity.ok(response);
     }
 
+    // =========================
     // DELETE
+    // =========================
+
     @DeleteMapping("/{expenseId}")
     public ResponseEntity<Void> deleteExpense(
             @PathVariable Long expenseId,
