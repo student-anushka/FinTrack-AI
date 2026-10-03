@@ -2,8 +2,6 @@ package com.fintrack.common.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import com.fintrack.common.exception.IncomeNotFoundException;
-import com.fintrack.common.exception.InvalidIncomeException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -80,6 +78,28 @@ public class GlobalExceptionHandler {
                 .body(new ApiResponse(
                         HttpStatus.BAD_REQUEST.value(),
                         ex.getMessage()));
+    }
+
+    @ExceptionHandler(FinancialGoalNotFoundException.class)
+    public ResponseEntity<ApiResponse> handleFinancialGoalNotFound(
+                    FinancialGoalNotFoundException ex) {
+
+            return ResponseEntity
+                            .status(HttpStatus.NOT_FOUND)
+                            .body(new ApiResponse(
+                                            HttpStatus.NOT_FOUND.value(),
+                                            ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidFinancialGoalException.class)
+    public ResponseEntity<ApiResponse> handleInvalidFinancialGoal(
+                    InvalidFinancialGoalException ex) {
+
+            return ResponseEntity
+                            .status(HttpStatus.BAD_REQUEST)
+                            .body(new ApiResponse(
+                                            HttpStatus.BAD_REQUEST.value(),
+                                            ex.getMessage()));
     }
 
 }
