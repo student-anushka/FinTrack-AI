@@ -31,6 +31,31 @@ public class GlobalExceptionHandler {
 
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
+  
+    @ExceptionHandler(BudgetNotFoundException.class)
+    public ResponseEntity<ApiResponse> handleBudgetNotFound(
+            BudgetNotFoundException ex) {
 
+        ApiResponse response = new ApiResponse(
+                HttpStatus.NOT_FOUND.value(),
+                ex.getMessage());
+
+        return new ResponseEntity<>(
+                response,
+                HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(InvalidBudgetException.class)
+    public ResponseEntity<ApiResponse> handleInvalidBudget(
+            InvalidBudgetException ex) {
+
+        ApiResponse response = new ApiResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                ex.getMessage());
+
+        return new ResponseEntity<>(
+                response,
+                HttpStatus.BAD_REQUEST);
+    }
 
 }
