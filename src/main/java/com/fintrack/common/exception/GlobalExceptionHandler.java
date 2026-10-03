@@ -2,6 +2,8 @@ package com.fintrack.common.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import com.fintrack.common.exception.IncomeNotFoundException;
+import com.fintrack.common.exception.InvalidIncomeException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -56,6 +58,28 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(
                 response,
                 HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(IncomeNotFoundException.class)
+    public ResponseEntity<ApiResponse> handleIncomeNotFound(
+            IncomeNotFoundException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(new ApiResponse(
+                        HttpStatus.NOT_FOUND.value(),
+                        ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidIncomeException.class)
+    public ResponseEntity<ApiResponse> handleInvalidIncome(
+            InvalidIncomeException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ApiResponse(
+                        HttpStatus.BAD_REQUEST.value(),
+                        ex.getMessage()));
     }
 
 }
