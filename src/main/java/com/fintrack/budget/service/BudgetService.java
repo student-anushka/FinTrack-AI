@@ -3,10 +3,12 @@ package com.fintrack.budget.service;
 import com.fintrack.auth.entity.User;
 import com.fintrack.auth.repository.UserRepository;
 
+import com.fintrack.budget.dto.BudgetPageResponse;
 import com.fintrack.budget.dto.BudgetResponse;
 import com.fintrack.budget.dto.CreateBudgetRequest;
 import com.fintrack.budget.entity.Budget;
 import com.fintrack.budget.repository.BudgetRepository;
+import com.fintrack.budget.specification.BudgetSpecification;
 
 import com.fintrack.common.exception.BudgetNotFoundException;
 import com.fintrack.common.exception.CategoryNotFoundException;
@@ -15,6 +17,12 @@ import com.fintrack.common.exception.InvalidBudgetException;
 import com.fintrack.expense.entity.Category;
 import com.fintrack.expense.repository.CategoryRepository;
 import com.fintrack.expense.repository.ExpenseRepository;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -46,7 +54,7 @@ public class BudgetService {
         }
 
         // =========================
-        // CREATE BUDGET
+        // CREATE
         // =========================
 
         public BudgetResponse createBudget(
@@ -88,23 +96,67 @@ public class BudgetService {
         }
 
         // =========================
-        // GET MY BUDGETS
+        // GET / SEARCH / FILTER
         // =========================
 
-        public List<BudgetResponse> getMyBudgets(
-                        Authentication authentication) {
+        public BudgetPageResponse filterBudgets(
+                        Authentication authentication,
+                        Long categoryId,
+                        LocalDate startDate,
+                        LocalDate endDate,
+                        String search,
+                        int page,
+                        int size,
+                        String sortBy,
+                        String direction) {
 
                 User user = getAuthenticatedUser(authentication);
 
-                return budgetRepository
-                                .findByUserId(user.getId())
+                validatePagination(page, size);
+
+                validateFilters(
+                                startDate,
+                                endDate);
+
+                Sort.Direction sortDirection = direction.equalsIgnoreCase("asc")
+                                ? Sort.Direction.ASC
+                                : Sort.Direction.DESC;
+
+                String safeSortBy = validateSortField(sortBy);
+
+                Pageable pageable = PageRequest.of(
+                                page,
+                                size,
+                                Sort.by(
+                                                sortDirection,
+                                                safeSortBy));
+
+                Specification<Budget> specification = BudgetSpecification.filterBudgets(
+                                user.getId(),
+                                categoryId,
+                                startDate,
+                                endDate,
+                                search);
+
+                Page<Budget> budgetPage = budgetRepository.findAll(
+                                specification,
+                                pageable);
+
+                List<BudgetResponse> budgets = budgetPage.getContent()
                                 .stream()
                                 .map(this::mapToResponse)
                                 .toList();
+
+                return new BudgetPageResponse(
+                                budgets,
+                                budgetPage.getNumber(),
+                                budgetPage.getTotalPages(),
+                                budgetPage.getTotalElements(),
+                                budgetPage.getSize());
         }
 
         // =========================
-        // GET BUDGET BY ID
+        // GET BY ID
         // =========================
 
         public BudgetResponse getBudgetById(
@@ -124,7 +176,7 @@ public class BudgetService {
         }
 
         // =========================
-        // UPDATE BUDGET
+        // UPDATE
         // =========================
 
         public BudgetResponse updateBudget(
@@ -168,7 +220,7 @@ public class BudgetService {
         }
 
         // =========================
-        // DELETE BUDGET
+        // DELETE
         // =========================
 
         public void deleteBudget(
@@ -231,6 +283,66 @@ public class BudgetService {
         }
 
         // =========================
+        // FILTER VALIDATION
+        // =========================
+
+        private void validateFilters(
+                        LocalDate startDate,
+                        LocalDate endDate) {
+
+                if (startDate != null
+                                && endDate != null
+                                && startDate.isAfter(endDate)) {
+
+                        throw new InvalidBudgetException(
+                                        "Filter start date cannot be after end date");
+                }
+        }
+
+        // =========================
+        // PAGINATION VALIDATION
+        // =========================
+
+        private void validatePagination(
+                        int page,
+                        int size) {
+
+                if (page < 0) {
+
+                        throw new InvalidBudgetException(
+                                        "Page number cannot be negative");
+                }
+
+                if (size < 1 || size > 100) {
+
+                        throw new InvalidBudgetException(
+                                        "Page size must be between 1 and 100");
+                }
+        }
+
+        // =========================
+        // SAFE SORTING
+        // =========================
+
+        private String validateSortField(
+                        String sortBy) {
+
+                return switch (sortBy) {
+
+                        case "id",
+                                        "name",
+                                        "amount",
+                                        "startDate",
+                                        "endDate",
+                                        "createdAt",
+                                        "updatedAt" ->
+                                sortBy;
+
+                        default -> "startDate";
+                };
+        }
+
+        // =========================
         // OVERLAPPING BUDGET
         // =========================
 
@@ -257,7 +369,7 @@ public class BudgetService {
         }
 
         // =========================
-        // MAP RESPONSE
+        // RESPONSE
         // =========================
 
         private BudgetResponse mapToResponse(

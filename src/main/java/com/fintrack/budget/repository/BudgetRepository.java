@@ -1,22 +1,24 @@
 package com.fintrack.budget.repository;
 
-import com.fintrack.budget.entity.Budget;
+import java.time.LocalDate;
+import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
-import java.util.Optional;
+import com.fintrack.budget.entity.Budget;
 
 public interface BudgetRepository
-                extends JpaRepository<Budget, Long> {
+                extends JpaRepository<Budget, Long>,
+                JpaSpecificationExecutor<Budget> {
 
-        List<Budget> findByUserId(Long userId);
+        Page<Budget> findByUserId(Long userId, Pageable pageable);
 
-        Optional<Budget> findByIdAndUserId(
-                        Long id,
-                        Long userId);
+        Optional<Budget> findByIdAndUserId(Long id, Long userId);
 
         @Query("""
                         SELECT COUNT(b) > 0
@@ -30,7 +32,7 @@ public interface BudgetRepository
         boolean existsOverlappingBudget(
                         @Param("userId") Long userId,
                         @Param("categoryId") Long categoryId,
-                        @Param("startDate") java.time.LocalDate startDate,
-                        @Param("endDate") java.time.LocalDate endDate,
+                        @Param("startDate") LocalDate startDate,
+                        @Param("endDate") LocalDate endDate,
                         @Param("budgetId") Long budgetId);
 }
