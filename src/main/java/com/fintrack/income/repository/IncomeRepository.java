@@ -51,4 +51,6 @@ public interface IncomeRepository
                         """)
         List<Object[]> findMonthlyIncome(
                         @Param("userId") Long userId);
+
+        List<Income> findTop10ByUserIdOrderByIncomeDateDesc(Long userId);
 }

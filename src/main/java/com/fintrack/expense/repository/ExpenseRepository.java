@@ -1,12 +1,10 @@
 package com.fintrack.expense.repository;
 
 import com.fintrack.expense.entity.Expense;
-
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Optional;
@@ -76,4 +74,5 @@ public interface ExpenseRepository
         List<Object[]> findMonthlyExpense(
                         @Param("userId") Long userId);
 
+        List<Expense> findTop10ByUserIdOrderByExpenseDateDesc(Long userId);  
 }

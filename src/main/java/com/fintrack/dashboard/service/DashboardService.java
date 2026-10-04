@@ -10,8 +10,16 @@ import com.fintrack.expense.repository.ExpenseRepository;
 import com.fintrack.goal.entity.FinancialGoal;
 import com.fintrack.goal.repository.FinancialGoalRepository;
 import com.fintrack.income.repository.IncomeRepository;
-import org.springframework.stereotype.Service;
 
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.GetMapping;
+
+import com.fintrack.expense.entity.Expense;
+import com.fintrack.goal.entity.GoalContribution;
+import com.fintrack.goal.repository.GoalContributionRepository;
+import com.fintrack.income.entity.Income;
+import com.fintrack.dashboard.dto.RecentActivityResponse;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -28,17 +36,20 @@ public class DashboardService {
         private final FinancialGoalRepository financialGoalRepository;
         private final IncomeRepository incomeRepository;
         private final ExpenseRepository expenseRepository;
-
+        private final GoalContributionRepository goalContributionRepository;
+        
         public DashboardService(
                         IncomeRepository incomeRepository,
                         ExpenseRepository expenseRepository,
                         BudgetRepository budgetRepository,
-                        FinancialGoalRepository financialGoalRepository) {
+                        FinancialGoalRepository financialGoalRepository,
+                        GoalContributionRepository goalContributionRepository) {
 
                 this.incomeRepository = incomeRepository;
                 this.expenseRepository = expenseRepository;
                 this.budgetRepository = budgetRepository;
                 this.financialGoalRepository = financialGoalRepository;
+                this.goalContributionRepository = goalContributionRepository;
         }
 
         // =========================================================
@@ -520,5 +531,84 @@ public class DashboardService {
                                 goalScore.setScale(
                                                 2,
                                                 RoundingMode.HALF_UP));
+        }
+
+        public List<RecentActivityResponse> getRecentActivity(
+                        Long userId) {
+
+                List<RecentActivityResponse> activities = new ArrayList<>();
+
+                // ---------------------------------------------------------
+                // EXPENSES
+                // ---------------------------------------------------------
+
+                List<Expense> expenses = expenseRepository
+                                .findTop10ByUserIdOrderByExpenseDateDesc(userId);
+
+                for (Expense expense : expenses) {
+
+                        activities.add(
+                                        new RecentActivityResponse(
+                                                        "EXPENSE",
+                                                        expense.getTitle(),
+                                                        expense.getAmount(),
+                                                        expense.getExpenseDate()));
+                }
+
+                // ---------------------------------------------------------
+                // INCOME
+                // ---------------------------------------------------------
+
+                List<Income> incomes = incomeRepository
+                                .findTop10ByUserIdOrderByIncomeDateDesc(userId);
+
+                for (Income income : incomes) {
+
+                        activities.add(
+                                        new RecentActivityResponse(
+                                                        "INCOME",
+                                                        income.getSource(),
+                                                        income.getAmount(),
+                                                        income.getIncomeDate()));
+                }
+
+                // ---------------------------------------------------------
+                // GOAL CONTRIBUTIONS
+                // ---------------------------------------------------------
+
+                List<GoalContribution> contributions = goalContributionRepository
+                                .findTop10ByGoalUserIdOrderByContributionDateDesc(
+                                                userId);
+
+                for (GoalContribution contribution : contributions) {
+
+                        String title = contribution.getGoal().getName();
+
+                        activities.add(
+                                        new RecentActivityResponse(
+                                                        "GOAL_CONTRIBUTION",
+                                                        title,
+                                                        contribution.getAmount(),
+                                                        contribution.getContributionDate()));
+                }
+
+                // ---------------------------------------------------------
+                // SORT ALL ACTIVITIES
+                // ---------------------------------------------------------
+
+                activities.sort(
+                                (a, b) -> b.getDate().compareTo(a.getDate()));
+
+                // ---------------------------------------------------------
+                // RETURN ONLY LATEST 10
+                // ---------------------------------------------------------
+
+                if (activities.size() > 10) {
+
+                        return new ArrayList<>(
+                                        activities.subList(0, 10));
+                }
+
+                return activities;
         }
 }
