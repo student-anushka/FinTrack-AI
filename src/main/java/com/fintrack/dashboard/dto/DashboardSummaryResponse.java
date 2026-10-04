@@ -9,9 +9,8 @@ public class DashboardSummaryResponse {
     private BigDecimal totalSavings;
     private BigDecimal savingsRate;
 
-    private BigDecimal totalBudget;
-    private BigDecimal totalBudgetSpent;
-    private BigDecimal budgetUsagePercentage;
+    private BigDecimal currentMonthIncome;
+    private BigDecimal currentMonthExpense;
 
     public DashboardSummaryResponse() {
     }
@@ -21,17 +20,15 @@ public class DashboardSummaryResponse {
             BigDecimal totalExpense,
             BigDecimal totalSavings,
             BigDecimal savingsRate,
-            BigDecimal totalBudget,
-            BigDecimal totalBudgetSpent,
-            BigDecimal budgetUsagePercentage) {
+            BigDecimal currentMonthIncome,
+            BigDecimal currentMonthExpense) {
 
         this.totalIncome = totalIncome;
         this.totalExpense = totalExpense;
         this.totalSavings = totalSavings;
         this.savingsRate = savingsRate;
-        this.totalBudget = totalBudget;
-        this.totalBudgetSpent = totalBudgetSpent;
-        this.budgetUsagePercentage = budgetUsagePercentage;
+        this.currentMonthIncome = currentMonthIncome;
+        this.currentMonthExpense = currentMonthExpense;
     }
 
     public BigDecimal getTotalIncome() {
@@ -50,16 +47,12 @@ public class DashboardSummaryResponse {
         return savingsRate;
     }
 
-    public BigDecimal getTotalBudget() {
-        return totalBudget;
+    public BigDecimal getCurrentMonthIncome() {
+        return currentMonthIncome;
     }
 
-    public BigDecimal getTotalBudgetSpent() {
-        return totalBudgetSpent;
-    }
-
-    public BigDecimal getBudgetUsagePercentage() {
-        return budgetUsagePercentage;
+    public BigDecimal getCurrentMonthExpense() {
+        return currentMonthExpense;
     }
 
     public void setTotalIncome(BigDecimal totalIncome) {
@@ -78,17 +71,15 @@ public class DashboardSummaryResponse {
         this.savingsRate = savingsRate;
     }
 
-    public void setTotalBudget(BigDecimal totalBudget) {
-        this.totalBudget = totalBudget;
+    public void setCurrentMonthIncome(
+            BigDecimal currentMonthIncome) {
+
+        this.currentMonthIncome = currentMonthIncome;
     }
 
-    public void setTotalBudgetSpent(BigDecimal totalBudgetSpent) {
-        this.totalBudgetSpent = totalBudgetSpent;
-    }
+    public void setCurrentMonthExpense(
+            BigDecimal currentMonthExpense) {
 
-    public void setBudgetUsagePercentage(
-            BigDecimal budgetUsagePercentage) {
-
-        this.budgetUsagePercentage = budgetUsagePercentage;
+        this.currentMonthExpense = currentMonthExpense;
     }
 }

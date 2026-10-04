@@ -1,96 +1,94 @@
 package com.fintrack.dashboard.service;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
+import com.fintrack.auth.entity.User;
+import com.fintrack.auth.repository.UserRepository;
+import com.fintrack.dashboard.dto.DashboardSummaryResponse;
+import com.fintrack.expense.repository.ExpenseRepository;
+import com.fintrack.income.repository.IncomeRepository;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
-import com.fintrack.auth.entity.User;
-import com.fintrack.auth.repository.UserRepository;
-import com.fintrack.dashboard.dto.DashboardSummaryResponse;
-import com.fintrack.dashboard.repository.DashboardRepository;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
 
 @Service
 public class DashboardService {
 
-    private final DashboardRepository dashboardRepository;
-    private final UserRepository userRepository;
+        private final UserRepository userRepository;
+        private final IncomeRepository incomeRepository;
+        private final ExpenseRepository expenseRepository;
 
-    public DashboardService(
-            DashboardRepository dashboardRepository,
-            UserRepository userRepository) {
+        public DashboardService(
+                        UserRepository userRepository,
+                        IncomeRepository incomeRepository,
+                        ExpenseRepository expenseRepository) {
 
-        this.dashboardRepository = dashboardRepository;
-
-        this.userRepository = userRepository;
-    }
-
-    public DashboardSummaryResponse getSummary(
-            Authentication authentication) {
-
-        User user = getAuthenticatedUser(authentication);
-
-        Long userId = user.getId();
-
-        BigDecimal totalIncome = dashboardRepository
-                .getTotalIncome(userId);
-
-        BigDecimal totalExpense = dashboardRepository
-                .getTotalExpense(userId);
-
-        BigDecimal totalBudget = dashboardRepository
-                .getTotalBudget(userId);
-
-        BigDecimal totalBudgetSpent = dashboardRepository
-                .getTotalBudgetSpent(userId);
-
-        BigDecimal totalSavings = totalIncome.subtract(totalExpense);
-
-        BigDecimal savingsRate = calculatePercentage(
-                totalSavings,
-                totalIncome);
-
-        BigDecimal budgetUsagePercentage = calculatePercentage(
-                totalBudgetSpent,
-                totalBudget);
-
-        return new DashboardSummaryResponse(
-                totalIncome,
-                totalExpense,
-                totalSavings,
-                savingsRate,
-                totalBudget,
-                totalBudgetSpent,
-                budgetUsagePercentage);
-    }
-
-    private BigDecimal calculatePercentage(
-            BigDecimal value,
-            BigDecimal total) {
-
-        if (total == null ||
-                total.compareTo(BigDecimal.ZERO) == 0) {
-
-            return BigDecimal.ZERO;
+                this.userRepository = userRepository;
+                this.incomeRepository = incomeRepository;
+                this.expenseRepository = expenseRepository;
         }
 
-        return value
-                .multiply(BigDecimal.valueOf(100))
-                .divide(
-                        total,
-                        2,
-                        RoundingMode.HALF_UP);
-    }
+        public DashboardSummaryResponse getSummary(
+                        Authentication authentication) {
 
-    private User getAuthenticatedUser(
-            Authentication authentication) {
+                User user = userRepository
+                                .findByEmail(authentication.getName())
+                                .orElseThrow(() -> new RuntimeException(
+                                                "Authenticated user not found"));
 
-        String email = authentication.getName();
+                Long userId = user.getId();
 
-        return userRepository
-                .findByEmail(email)
-                .orElseThrow(() -> new RuntimeException(
-                        "Authenticated user not found"));
-    }
+                BigDecimal totalIncome = incomeRepository.calculateTotalIncome(userId);
+
+                BigDecimal totalExpense = expenseRepository.calculateTotalExpense(userId);
+
+                BigDecimal totalSavings = totalIncome.subtract(totalExpense);
+
+                BigDecimal savingsRate = calculateSavingsRate(
+                                totalIncome,
+                                totalSavings);
+
+                LocalDate today = LocalDate.now();
+
+                LocalDate monthStart = today.withDayOfMonth(1);
+
+                LocalDate monthEnd = today.withDayOfMonth(
+                                today.lengthOfMonth());
+
+                BigDecimal currentMonthIncome = incomeRepository.calculateIncomeBetweenDates(
+                                userId,
+                                monthStart,
+                                monthEnd);
+
+                BigDecimal currentMonthExpense = expenseRepository.calculateExpenseBetweenDates(
+                                userId,
+                                monthStart,
+                                monthEnd);
+
+                return new DashboardSummaryResponse(
+                                totalIncome,
+                                totalExpense,
+                                totalSavings,
+                                savingsRate,
+                                currentMonthIncome,
+                                currentMonthExpense);
+        }
+
+        private BigDecimal calculateSavingsRate(
+                        BigDecimal totalIncome,
+                        BigDecimal totalSavings) {
+
+                if (totalIncome.compareTo(BigDecimal.ZERO) == 0) {
+                        return BigDecimal.ZERO;
+                }
+
+                return totalSavings
+                                .multiply(BigDecimal.valueOf(100))
+                                .divide(
+                                                totalIncome,
+                                                2,
+                                                RoundingMode.HALF_UP);
+        }
 }
