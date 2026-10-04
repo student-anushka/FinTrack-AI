@@ -1,9 +1,14 @@
 package com.fintrack.dashboard.service;
 
+import com.fintrack.budget.entity.Budget;
+import com.fintrack.budget.repository.BudgetRepository;
 import com.fintrack.dashboard.dto.CategorySpendingResponse;
 import com.fintrack.dashboard.dto.DashboardSummaryResponse;
+import com.fintrack.dashboard.dto.FinancialHealthResponse;
 import com.fintrack.dashboard.dto.MonthlyTrendResponse;
 import com.fintrack.expense.repository.ExpenseRepository;
+import com.fintrack.goal.entity.FinancialGoal;
+import com.fintrack.goal.repository.FinancialGoalRepository;
 import com.fintrack.income.repository.IncomeRepository;
 import org.springframework.stereotype.Service;
 
@@ -19,16 +24,26 @@ import java.util.Map;
 @Service
 public class DashboardService {
 
+        private final BudgetRepository budgetRepository;
+        private final FinancialGoalRepository financialGoalRepository;
         private final IncomeRepository incomeRepository;
         private final ExpenseRepository expenseRepository;
 
         public DashboardService(
                         IncomeRepository incomeRepository,
-                        ExpenseRepository expenseRepository) {
+                        ExpenseRepository expenseRepository,
+                        BudgetRepository budgetRepository,
+                        FinancialGoalRepository financialGoalRepository) {
 
                 this.incomeRepository = incomeRepository;
                 this.expenseRepository = expenseRepository;
+                this.budgetRepository = budgetRepository;
+                this.financialGoalRepository = financialGoalRepository;
         }
+
+        // =========================================================
+        // DASHBOARD SUMMARY
+        // =========================================================
 
         public DashboardSummaryResponse getSummary(Long userId) {
 
@@ -43,7 +58,10 @@ public class DashboardService {
                 if (totalIncome.compareTo(BigDecimal.ZERO) > 0) {
 
                         savingsRate = totalSavings
-                                        .divide(totalIncome, 4, RoundingMode.HALF_UP)
+                                        .divide(
+                                                        totalIncome,
+                                                        4,
+                                                        RoundingMode.HALF_UP)
                                         .multiply(BigDecimal.valueOf(100))
                                         .setScale(2, RoundingMode.HALF_UP);
                 }
@@ -74,6 +92,10 @@ public class DashboardService {
                                 currentMonthExpense);
         }
 
+        // =========================================================
+        // CATEGORY-WISE SPENDING
+        // =========================================================
+
         public List<CategorySpendingResponse> getCategoryWiseSpending(
                         Long userId) {
 
@@ -96,7 +118,10 @@ public class DashboardService {
                         if (totalExpense.compareTo(BigDecimal.ZERO) > 0) {
 
                                 percentage = totalAmount
-                                                .divide(totalExpense, 4, RoundingMode.HALF_UP)
+                                                .divide(
+                                                                totalExpense,
+                                                                4,
+                                                                RoundingMode.HALF_UP)
                                                 .multiply(BigDecimal.valueOf(100))
                                                 .setScale(2, RoundingMode.HALF_UP);
                         }
@@ -111,6 +136,10 @@ public class DashboardService {
 
                 return response;
         }
+
+        // =========================================================
+        // MONTHLY TRENDS
+        // =========================================================
 
         public List<MonthlyTrendResponse> getMonthlyTrends(
                         Long userId) {
@@ -157,7 +186,9 @@ public class DashboardService {
 
                         Integer month = ((Number) row[1]).intValue();
 
-                        months.put(year + "-" + month, true);
+                        months.put(
+                                        year + "-" + month,
+                                        true);
                 }
 
                 for (Object[] row : expenseResults) {
@@ -166,7 +197,9 @@ public class DashboardService {
 
                         Integer month = ((Number) row[1]).intValue();
 
-                        months.put(year + "-" + month, true);
+                        months.put(
+                                        year + "-" + month,
+                                        true);
                 }
 
                 List<MonthlyTrendResponse> response = new ArrayList<>();
@@ -201,7 +234,8 @@ public class DashboardService {
                 response.sort(
                                 (a, b) -> {
 
-                                        int yearComparison = a.getYear().compareTo(b.getYear());
+                                        int yearComparison = a.getYear()
+                                                        .compareTo(b.getYear());
 
                                         if (yearComparison != 0) {
                                                 return yearComparison;
@@ -212,5 +246,279 @@ public class DashboardService {
                                 });
 
                 return response;
+        }
+
+        // =========================================================
+        // FINANCIAL HEALTH SCORE
+        // =========================================================
+
+        public FinancialHealthResponse getFinancialHealth(
+                        Long userId) {
+
+                BigDecimal totalIncome = incomeRepository.calculateTotalIncome(userId);
+
+                BigDecimal totalExpense = expenseRepository.calculateTotalExpense(userId);
+
+                // -----------------------------------------------------
+                // 1. SAVINGS SCORE - 30 POINTS
+                // -----------------------------------------------------
+
+                BigDecimal savingsScore = BigDecimal.ZERO;
+
+                if (totalIncome.compareTo(BigDecimal.ZERO) > 0) {
+
+                        BigDecimal savingsRate = totalIncome
+                                        .subtract(totalExpense)
+                                        .divide(
+                                                        totalIncome,
+                                                        4,
+                                                        RoundingMode.HALF_UP)
+                                        .multiply(BigDecimal.valueOf(100));
+
+                        if (savingsRate.compareTo(BigDecimal.ZERO) > 0) {
+
+                                savingsScore = savingsRate
+                                                .divide(
+                                                                BigDecimal.valueOf(20),
+                                                                4,
+                                                                RoundingMode.HALF_UP)
+                                                .multiply(
+                                                                BigDecimal.valueOf(30));
+
+                                if (savingsScore.compareTo(
+                                                BigDecimal.valueOf(30)) > 0) {
+
+                                        savingsScore = BigDecimal.valueOf(30);
+                                }
+                        }
+                }
+
+                // -----------------------------------------------------
+                // 2. EXPENSE CONTROL SCORE - 25 POINTS
+                // -----------------------------------------------------
+
+                BigDecimal expenseControlScore = BigDecimal.ZERO;
+
+                if (totalIncome.compareTo(BigDecimal.ZERO) > 0) {
+
+                        BigDecimal expenseRatio = totalExpense
+                                        .divide(
+                                                        totalIncome,
+                                                        4,
+                                                        RoundingMode.HALF_UP)
+                                        .multiply(
+                                                        BigDecimal.valueOf(100));
+
+                        // Expense <= 50% of income
+                        // Full 25 points
+                        if (expenseRatio.compareTo(
+                                        BigDecimal.valueOf(50)) <= 0) {
+
+                                expenseControlScore = BigDecimal.valueOf(25);
+
+                                // Expense between 50% and 100%
+                        } else if (expenseRatio.compareTo(
+                                        BigDecimal.valueOf(100)) < 0) {
+
+                                BigDecimal reduction = expenseRatio
+                                                .subtract(
+                                                                BigDecimal.valueOf(50))
+                                                .divide(
+                                                                BigDecimal.valueOf(50),
+                                                                4,
+                                                                RoundingMode.HALF_UP)
+                                                .multiply(
+                                                                BigDecimal.valueOf(25));
+
+                                expenseControlScore = BigDecimal.valueOf(25)
+                                                .subtract(reduction);
+                        }
+                }
+
+                // -----------------------------------------------------
+                // 3. BUDGET SCORE - 25 POINTS
+                // -----------------------------------------------------
+
+                BigDecimal budgetScore = BigDecimal.ZERO;
+
+                List<Budget> budgets = budgetRepository.findAllByUserId(userId);
+
+                if (!budgets.isEmpty()) {
+
+                        BigDecimal totalUtilization = BigDecimal.ZERO;
+
+                        int validBudgets = 0;
+
+                        for (Budget budget : budgets) {
+
+                                BigDecimal spent = expenseRepository.calculateTotalSpent(
+                                                userId,
+                                                budget.getCategory().getId(),
+                                                budget.getStartDate(),
+                                                budget.getEndDate());
+
+                                if (budget.getAmount()
+                                                .compareTo(BigDecimal.ZERO) > 0) {
+
+                                        BigDecimal utilization = spent
+                                                        .divide(
+                                                                        budget.getAmount(),
+                                                                        4,
+                                                                        RoundingMode.HALF_UP)
+                                                        .multiply(
+                                                                        BigDecimal.valueOf(100));
+
+                                        totalUtilization = totalUtilization.add(
+                                                        utilization);
+
+                                        validBudgets++;
+                                }
+                        }
+
+                        if (validBudgets > 0) {
+
+                                BigDecimal averageUtilization = totalUtilization.divide(
+                                                BigDecimal.valueOf(
+                                                                validBudgets),
+                                                4,
+                                                RoundingMode.HALF_UP);
+
+                                // <= 80% utilization
+                                // Full 25 points
+                                if (averageUtilization.compareTo(
+                                                BigDecimal.valueOf(80)) <= 0) {
+
+                                        budgetScore = BigDecimal.valueOf(25);
+
+                                        // 80% - 120%
+                                } else if (averageUtilization.compareTo(
+                                                BigDecimal.valueOf(120)) < 0) {
+
+                                        BigDecimal reduction = averageUtilization
+                                                        .subtract(
+                                                                        BigDecimal.valueOf(80))
+                                                        .divide(
+                                                                        BigDecimal.valueOf(40),
+                                                                        4,
+                                                                        RoundingMode.HALF_UP)
+                                                        .multiply(
+                                                                        BigDecimal.valueOf(25));
+
+                                        budgetScore = BigDecimal.valueOf(25)
+                                                        .subtract(reduction);
+                                }
+                        }
+                }
+
+                // -----------------------------------------------------
+                // 4. GOAL SCORE - 20 POINTS
+                // -----------------------------------------------------
+
+                BigDecimal goalScore = BigDecimal.ZERO;
+
+                List<FinancialGoal> goals = financialGoalRepository.findByUserId(userId);
+
+                if (!goals.isEmpty()) {
+
+                        BigDecimal totalCompletion = BigDecimal.ZERO;
+
+                        int validGoals = 0;
+
+                        for (FinancialGoal goal : goals) {
+
+                                if (goal.getTargetAmount()
+                                                .compareTo(BigDecimal.ZERO) > 0) {
+
+                                        BigDecimal completion = goal.getCurrentAmount()
+                                                        .divide(
+                                                                        goal.getTargetAmount(),
+                                                                        4,
+                                                                        RoundingMode.HALF_UP)
+                                                        .multiply(
+                                                                        BigDecimal.valueOf(100));
+
+                                        if (completion.compareTo(
+                                                        BigDecimal.valueOf(100)) > 0) {
+
+                                                completion = BigDecimal.valueOf(100);
+                                        }
+
+                                        totalCompletion = totalCompletion.add(
+                                                        completion);
+
+                                        validGoals++;
+                                }
+                        }
+
+                        if (validGoals > 0) {
+
+                                BigDecimal averageCompletion = totalCompletion.divide(
+                                                BigDecimal.valueOf(validGoals),
+                                                4,
+                                                RoundingMode.HALF_UP);
+
+                                goalScore = averageCompletion
+                                                .divide(
+                                                                BigDecimal.valueOf(100),
+                                                                4,
+                                                                RoundingMode.HALF_UP)
+                                                .multiply(
+                                                                BigDecimal.valueOf(20));
+                        }
+                }
+
+                // -----------------------------------------------------
+                // FINAL SCORE
+                // -----------------------------------------------------
+
+                BigDecimal totalScore = savingsScore
+                                .add(expenseControlScore)
+                                .add(budgetScore)
+                                .add(goalScore)
+                                .setScale(
+                                                2,
+                                                RoundingMode.HALF_UP);
+
+                // -----------------------------------------------------
+                // RATING
+                // -----------------------------------------------------
+
+                String rating;
+
+                if (totalScore.compareTo(
+                                BigDecimal.valueOf(80)) >= 0) {
+
+                        rating = "EXCELLENT";
+
+                } else if (totalScore.compareTo(
+                                BigDecimal.valueOf(65)) >= 0) {
+
+                        rating = "GOOD";
+
+                } else if (totalScore.compareTo(
+                                BigDecimal.valueOf(50)) >= 0) {
+
+                        rating = "FAIR";
+
+                } else {
+
+                        rating = "NEEDS_IMPROVEMENT";
+                }
+
+                return new FinancialHealthResponse(
+                                totalScore,
+                                rating,
+                                savingsScore.setScale(
+                                                2,
+                                                RoundingMode.HALF_UP),
+                                expenseControlScore.setScale(
+                                                2,
+                                                RoundingMode.HALF_UP),
+                                budgetScore.setScale(
+                                                2,
+                                                RoundingMode.HALF_UP),
+                                goalScore.setScale(
+                                                2,
+                                                RoundingMode.HALF_UP));
         }
 }

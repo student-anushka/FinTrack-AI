@@ -13,6 +13,7 @@ import com.fintrack.budget.service.BudgetService;
 import com.fintrack.dashboard.dto.BudgetUtilizationResponse;
 import com.fintrack.budget.dto.BudgetResponse;
 import java.util.List;
+import com.fintrack.dashboard.dto.FinancialHealthResponse;
 import com.fintrack.dashboard.dto.GoalProgressResponse;
 import com.fintrack.goal.dto.FinancialGoalResponse;
 import com.fintrack.goal.service.FinancialGoalService;
@@ -120,6 +121,17 @@ public class DashboardController {
                         goal.getTargetDate(),
                         goal.getStatus()))
                 .toList();
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/financial-health")
+    public ResponseEntity<FinancialHealthResponse> getFinancialHealth(
+            Authentication authentication) {
+
+        Long userId = getLoggedInUserId(authentication);
+
+        FinancialHealthResponse response = dashboardService.getFinancialHealth(userId);
 
         return ResponseEntity.ok(response);
     }
