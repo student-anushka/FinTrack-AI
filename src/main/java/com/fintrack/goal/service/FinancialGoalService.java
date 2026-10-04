@@ -3,12 +3,18 @@ package com.fintrack.goal.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import com.fintrack.goal.dto.GoalContributionPageResponse;
+import com.fintrack.goal.dto.GoalContributionResponse;
+import com.fintrack.goal.specification.GoalContributionSpecification;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import java.time.LocalDateTime;
 import java.util.List;
-
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
-
 import com.fintrack.auth.entity.User;
 import com.fintrack.auth.repository.UserRepository;
 import com.fintrack.common.exception.FinancialGoalNotFoundException;
@@ -21,6 +27,7 @@ import com.fintrack.goal.entity.FinancialGoal;
 import com.fintrack.goal.entity.GoalContribution;
 import com.fintrack.goal.repository.FinancialGoalRepository;
 import com.fintrack.goal.repository.GoalContributionRepository;
+
 
 @Service
 public class FinancialGoalService {
@@ -267,5 +274,160 @@ public class FinancialGoalService {
                                 goal.getTargetDate(),
                                 goal.getDescription(),
                                 status);
+        }
+
+        public GoalContributionPageResponse getContributions(
+                Long goalId,
+                Authentication authentication,
+                LocalDate startDate,
+                LocalDate endDate,
+                BigDecimal minAmount,
+                BigDecimal maxAmount,
+                int page,
+                int size,
+                String sortBy,
+                String direction) {
+
+        FinancialGoal goal =
+            getOwnedGoal(
+                    goalId,
+                    authentication
+            );
+
+        validateContributionFilters(
+            startDate,
+            endDate,
+            minAmount,
+            maxAmount
+        );
+
+        if (page < 0) {
+        throw new InvalidFinancialGoalException(
+                "Page number cannot be negative"
+        );
+        }
+
+        if (size < 1 || size > 100) {
+        throw new InvalidFinancialGoalException(
+                "Page size must be between 1 and 100"
+        );
+        }
+
+        String safeSortBy =
+            validateContributionSortField(sortBy);
+
+        Sort.Direction sortDirection =
+            direction.equalsIgnoreCase("asc")
+                    ? Sort.Direction.ASC
+                    : Sort.Direction.DESC;
+
+        Pageable pageable =
+            PageRequest.of(
+                    page,
+                    size,
+                    Sort.by(
+                            sortDirection,
+                            safeSortBy
+                    )
+            );
+
+        Specification<GoalContribution> specification =
+            GoalContributionSpecification
+                    .filterContributions(
+                            goal.getId(),
+                            startDate,
+                            endDate,
+                            minAmount,
+                            maxAmount
+                    );
+
+        Page<GoalContribution> contributionPage =
+            contributionRepository.findAll(
+                    specification,
+                    pageable
+            );
+
+        List<GoalContributionResponse> contributions =
+            contributionPage
+                    .getContent()
+                    .stream()
+                    .map(this::mapContributionToResponse)
+                    .toList();
+
+        return new GoalContributionPageResponse(
+            contributions,
+            contributionPage.getNumber(),
+            contributionPage.getTotalPages(),
+            contributionPage.getTotalElements(),
+            contributionPage.getSize()
+        );
+        }
+
+        private void validateContributionFilters(
+                        LocalDate startDate,
+                        LocalDate endDate,
+                        BigDecimal minAmount,
+                        BigDecimal maxAmount) {
+
+                if (startDate != null &&
+                                endDate != null &&
+                                startDate.isAfter(endDate)) {
+
+                        throw new InvalidFinancialGoalException(
+                                        "Start date cannot be after end date");
+                }
+
+                if (minAmount != null &&
+                                minAmount.compareTo(BigDecimal.ZERO) < 0) {
+
+                        throw new InvalidFinancialGoalException(
+                                        "Minimum amount cannot be negative");
+                }
+
+                if (maxAmount != null &&
+                                maxAmount.compareTo(BigDecimal.ZERO) < 0) {
+
+                        throw new InvalidFinancialGoalException(
+                                        "Maximum amount cannot be negative");
+                }
+
+                if (minAmount != null &&
+                                maxAmount != null &&
+                                minAmount.compareTo(maxAmount) > 0) {
+
+                        throw new InvalidFinancialGoalException(
+                                        "Minimum amount cannot be greater than maximum amount");
+                }
+        }
+
+        private String validateContributionSortField(
+                        String sortBy) {
+
+                if (sortBy == null ||
+                                sortBy.trim().isEmpty()) {
+
+                        return "contributionDate";
+                }
+
+                if (!sortBy.equals("id") &&
+                                !sortBy.equals("amount") &&
+                                !sortBy.equals("contributionDate") &&
+                                !sortBy.equals("createdAt")) {
+
+                        throw new InvalidFinancialGoalException(
+                                        "Invalid sort field: " + sortBy);
+                }
+
+                return sortBy;
+        }
+
+        private GoalContributionResponse mapContributionToResponse(
+                        GoalContribution contribution) {
+
+                return new GoalContributionResponse(
+                                contribution.getId(),
+                                contribution.getAmount(),
+                                contribution.getContributionDate(),
+                                contribution.getNote());
         }
 }

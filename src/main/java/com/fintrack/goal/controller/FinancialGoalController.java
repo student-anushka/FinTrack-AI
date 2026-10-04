@@ -1,7 +1,9 @@
 package com.fintrack.goal.controller;
 
 import java.util.List;
-
+import com.fintrack.goal.dto.GoalContributionPageResponse;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fintrack.goal.dto.CreateContributionRequest;
@@ -109,4 +112,53 @@ public class FinancialGoalController {
                                                 request,
                                                 authentication));
         }
+
+        @GetMapping("/{goalId}/contributions")
+        public ResponseEntity<GoalContributionPageResponse>
+        getContributions(
+
+        @PathVariable Long goalId,
+
+        Authentication authentication,
+
+        @RequestParam(required = false)
+        LocalDate startDate,
+
+        @RequestParam(required = false)
+        LocalDate endDate,
+
+        @RequestParam(required = false)
+        BigDecimal minAmount,
+
+        @RequestParam(required = false)
+        BigDecimal maxAmount,
+
+        @RequestParam(defaultValue = "0")
+        int page,
+
+        @RequestParam(defaultValue = "10")
+        int size,
+
+        @RequestParam(defaultValue = "contributionDate")
+        String sortBy,
+
+        @RequestParam(defaultValue = "desc")
+        String direction) {
+
+        GoalContributionPageResponse response =
+            goalService.getContributions(
+                    goalId,
+                    authentication,
+                    startDate,
+                    endDate,
+                    minAmount,
+                    maxAmount,
+                    page,
+                    size,
+                    sortBy,
+                    direction
+            );
+
+        return ResponseEntity.ok(response);
+}
 }
