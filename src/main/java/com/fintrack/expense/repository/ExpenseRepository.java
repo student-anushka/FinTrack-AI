@@ -14,6 +14,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.Optional;
+import java.util.List;
 
 public interface ExpenseRepository
                 extends JpaRepository<Expense, Long>,
@@ -54,4 +55,16 @@ public interface ExpenseRepository
                         @Param("userId") Long userId,
                         @Param("startDate") LocalDate startDate,
                         @Param("endDate") LocalDate endDate);
+
+        @Query("""
+                        SELECT e.category.id,
+                               e.category.name,
+                               COALESCE(SUM(e.amount), 0)
+                        FROM Expense e
+                        WHERE e.user.id = :userId
+                        GROUP BY e.category.id, e.category.name
+                        ORDER BY SUM(e.amount) DESC
+                        """)
+        List<Object[]> findCategoryWiseExpense(
+                        @Param("userId") Long userId);
 }
