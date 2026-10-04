@@ -4,11 +4,17 @@ import com.fintrack.auth.entity.User;
 import com.fintrack.auth.repository.UserRepository;
 
 import com.fintrack.budget.dto.BudgetPageResponse;
-import com.fintrack.budget.dto.BudgetResponse;
 import com.fintrack.budget.dto.CreateBudgetRequest;
-import com.fintrack.budget.entity.Budget;
 import com.fintrack.budget.repository.BudgetRepository;
 import com.fintrack.budget.specification.BudgetSpecification;
+
+import com.fintrack.budget.dto.BudgetResponse;
+import com.fintrack.budget.entity.Budget;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.fintrack.common.exception.BudgetNotFoundException;
 import com.fintrack.common.exception.CategoryNotFoundException;
@@ -26,12 +32,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 public class BudgetService {
@@ -444,4 +445,82 @@ public class BudgetService {
 
                 return "ON_TRACK";
         }
+
+        public List<BudgetResponse> getAllBudgetsForDashboard(Long userId) {
+
+    List<Budget> budgets =
+            budgetRepository.findAllByUserId(userId);
+
+    List<BudgetResponse> response =
+            new ArrayList<>();
+
+    for (Budget budget : budgets) {
+
+        BigDecimal spentAmount =
+                expenseRepository.calculateTotalSpent(
+                        userId,
+                        budget.getCategory().getId(),
+                        budget.getStartDate(),
+                        budget.getEndDate()
+                );
+
+        BigDecimal remainingAmount =
+                budget.getAmount().subtract(spentAmount);
+
+        BigDecimal percentageUsed =
+                BigDecimal.ZERO;
+
+        if (budget.getAmount().compareTo(BigDecimal.ZERO) > 0) {
+
+            percentageUsed =
+                    spentAmount
+                            .divide(
+                                    budget.getAmount(),
+                                    4,
+                                    RoundingMode.HALF_UP
+                            )
+                            .multiply(BigDecimal.valueOf(100))
+                            .setScale(2, RoundingMode.HALF_UP);
+        }
+
+        String status;
+
+        LocalDate today = LocalDate.now();
+
+        if (today.isBefore(budget.getStartDate())) {
+
+            status = "UPCOMING";
+
+        } else if (today.isAfter(budget.getEndDate())) {
+
+            status = "COMPLETED";
+
+        } else if (spentAmount.compareTo(budget.getAmount()) > 0) {
+
+            status = "EXCEEDED";
+
+        } else {
+
+            status = "ON_TRACK";
+        }
+
+        response.add(
+                new BudgetResponse(
+                        budget.getId(),
+                        budget.getName(),
+                        budget.getAmount(),
+                        budget.getStartDate(),
+                        budget.getEndDate(),
+                        budget.getCategory().getId(),
+                        budget.getCategory().getName(),
+                        spentAmount,
+                        remainingAmount,
+                        percentageUsed,
+                        status
+                )
+        );
+    }
+
+    return response;
+}
 }

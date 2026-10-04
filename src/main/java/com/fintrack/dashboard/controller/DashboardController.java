@@ -9,22 +9,27 @@ import com.fintrack.dashboard.service.DashboardService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
+import com.fintrack.budget.service.BudgetService;
+import com.fintrack.dashboard.dto.BudgetUtilizationResponse;
+import com.fintrack.budget.dto.BudgetResponse;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/dashboard")
 public class DashboardController {
 
+    private final BudgetService budgetService;
     private final DashboardService dashboardService;
     private final UserRepository userRepository;
 
     public DashboardController(
             DashboardService dashboardService,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            BudgetService budgetService) {
 
         this.dashboardService = dashboardService;
         this.userRepository = userRepository;
+        this.budgetService = budgetService;
     }
 
     private Long getLoggedInUserId(Authentication authentication) {
@@ -65,5 +70,28 @@ public class DashboardController {
 
         return ResponseEntity.ok(
                 dashboardService.getMonthlyTrends(userId));
+    }
+
+    @GetMapping("/budget-utilization")
+    public ResponseEntity<List<BudgetUtilizationResponse>> getBudgetUtilization(
+            Authentication authentication) {
+
+        Long userId = getLoggedInUserId(authentication);
+
+        List<BudgetResponse> budgets = budgetService.getAllBudgetsForDashboard(userId);
+
+        List<BudgetUtilizationResponse> response = budgets.stream()
+                .map(budget -> new BudgetUtilizationResponse(
+                        budget.getId(),
+                        budget.getName(),
+                        budget.getCategoryName(),
+                        budget.getAmount(),
+                        budget.getSpentAmount(),
+                        budget.getRemainingAmount(),
+                        budget.getPercentageUsed(),
+                        budget.getStatus()))
+                .toList();
+
+        return ResponseEntity.ok(response);
     }
 }

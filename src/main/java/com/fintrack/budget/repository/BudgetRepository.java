@@ -11,7 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.fintrack.budget.entity.Budget;
-
+import java.util.List;
 public interface BudgetRepository
                 extends JpaRepository<Budget, Long>,
                 JpaSpecificationExecutor<Budget> {
@@ -19,6 +19,8 @@ public interface BudgetRepository
         Page<Budget> findByUserId(Long userId, Pageable pageable);
 
         Optional<Budget> findByIdAndUserId(Long id, Long userId);
+
+        List<Budget> findAllByUserId(Long userId);
 
         @Query("""
                         SELECT COUNT(b) > 0
