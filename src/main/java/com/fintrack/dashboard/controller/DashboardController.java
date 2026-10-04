@@ -13,6 +13,9 @@ import com.fintrack.budget.service.BudgetService;
 import com.fintrack.dashboard.dto.BudgetUtilizationResponse;
 import com.fintrack.budget.dto.BudgetResponse;
 import java.util.List;
+import com.fintrack.dashboard.dto.GoalProgressResponse;
+import com.fintrack.goal.dto.FinancialGoalResponse;
+import com.fintrack.goal.service.FinancialGoalService;
 
 @RestController
 @RequestMapping("/api/v1/dashboard")
@@ -21,15 +24,18 @@ public class DashboardController {
     private final BudgetService budgetService;
     private final DashboardService dashboardService;
     private final UserRepository userRepository;
+    private final FinancialGoalService financialGoalService;
 
     public DashboardController(
             DashboardService dashboardService,
             UserRepository userRepository,
-            BudgetService budgetService) {
+            BudgetService budgetService,
+        FinancialGoalService financialGoalService) {
 
         this.dashboardService = dashboardService;
         this.userRepository = userRepository;
         this.budgetService = budgetService;
+        this.financialGoalService = financialGoalService;
     }
 
     private Long getLoggedInUserId(Authentication authentication) {
@@ -90,6 +96,29 @@ public class DashboardController {
                         budget.getRemainingAmount(),
                         budget.getPercentageUsed(),
                         budget.getStatus()))
+                .toList();
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/goal-progress")
+    public ResponseEntity<List<GoalProgressResponse>> getGoalProgress(
+            Authentication authentication) {
+
+        Long userId = getLoggedInUserId(authentication);
+
+        List<FinancialGoalResponse> goals = financialGoalService.getAllGoalsForDashboard(userId);
+
+        List<GoalProgressResponse> response = goals.stream()
+                .map(goal -> new GoalProgressResponse(
+                        goal.getId(),
+                        goal.getName(),
+                        goal.getTargetAmount(),
+                        goal.getCurrentAmount(),
+                        goal.getRemainingAmount(),
+                        goal.getPercentageCompleted(),
+                        goal.getTargetDate(),
+                        goal.getStatus()))
                 .toList();
 
         return ResponseEntity.ok(response);

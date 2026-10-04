@@ -3,6 +3,8 @@ package com.fintrack.goal.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import com.fintrack.goal.dto.GoalContributionPageResponse;
 import com.fintrack.goal.dto.GoalContributionResponse;
 import com.fintrack.goal.specification.GoalContributionSpecification;
@@ -12,7 +14,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import java.time.LocalDateTime;
-import java.util.List;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import com.fintrack.auth.entity.User;
@@ -430,4 +431,73 @@ public class FinancialGoalService {
                                 contribution.getContributionDate(),
                                 contribution.getNote());
         }
+
+        public List<FinancialGoalResponse> getAllGoalsForDashboard(Long userId) {
+
+        List<FinancialGoal> goals = goalRepository.findByUserId(userId);
+
+        List<FinancialGoalResponse> response =
+            new ArrayList<>();
+
+        for (FinancialGoal goal : goals) {
+
+        BigDecimal currentAmount =
+                goal.getCurrentAmount();
+
+        BigDecimal targetAmount =
+                goal.getTargetAmount();
+
+        BigDecimal remainingAmount =
+                targetAmount.subtract(currentAmount);
+
+        BigDecimal percentageCompleted =
+                BigDecimal.ZERO;
+
+        if (targetAmount.compareTo(BigDecimal.ZERO) > 0) {
+
+            percentageCompleted =
+                    currentAmount
+                            .divide(
+                                    targetAmount,
+                                    4,
+                                    RoundingMode.HALF_UP
+                            )
+                            .multiply(BigDecimal.valueOf(100))
+                            .setScale(2, RoundingMode.HALF_UP);
+        }
+
+        String status;
+
+        LocalDate today = LocalDate.now();
+
+        if (currentAmount.compareTo(targetAmount) >= 0) {
+
+            status = "COMPLETED";
+
+        } else if (today.isAfter(goal.getTargetDate())) {
+
+            status = "OVERDUE";
+
+        } else {
+
+            status = "IN_PROGRESS";
+        }
+
+        response.add(
+                new FinancialGoalResponse(
+                        goal.getId(),
+                        goal.getName(),
+                        targetAmount,
+                        currentAmount,
+                        remainingAmount,
+                        percentageCompleted,
+                        goal.getTargetDate(),
+                        goal.getDescription(),
+                        status
+                )
+        );
+    }
+
+    return response;
+}
 }
