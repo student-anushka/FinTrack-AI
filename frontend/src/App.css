@@ -218,10 +218,6 @@
     grid-template-columns: 1fr;
   }
 
-  .dashboard-header {
-    flex-direction: column;
-  }
-
   .summary-grid {
     grid-template-columns: 1fr;
   }
@@ -229,4 +225,336 @@
   .secondary-button {
     width: 100%;
   }
+
+  .dashboard-page {
+  min-height: 100vh;
+  padding: 48px;
+  background: #f5f7f6;
+}
+
+.dashboard-header {
+  max-width: 1280px;
+  margin: 0 auto 40px;
+  display: flex;
+  justify-content: space-between;
+  gap: 32px;
+  align-items: flex-start;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #176f62;
+}
+
+.dashboard-header h1 {
+  margin: 0;
+  font-size: 48px;
+  line-height: 1.1;
+  color: #10201d;
+}
+
+.dashboard-subtitle {
+  max-width: 680px;
+  margin-top: 14px;
+  font-size: 18px;
+  line-height: 1.6;
+  color: #65746f;
+}
+
+.logout-button {
+  border: 0;
+  border-radius: 10px;
+  padding: 14px 24px;
+  background: #15211f;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.logout-button:hover {
+  opacity: 0.9;
+}
+
+.summary-grid {
+  max-width: 1280px;
+  margin: 0 auto 36px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+.summary-card,
+.financial-card,
+.category-card,
+.empty-card,
+.trend-table-wrapper,
+.health-card {
+  background: white;
+  border: 1px solid #dde5e2;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(15, 35, 31, 0.05);
+}
+
+.summary-card {
+  padding: 24px;
+}
+
+.summary-card p {
+  margin: 0 0 14px;
+  color: #687773;
+}
+
+.summary-card h2 {
+  margin: 0;
+  font-size: 30px;
+  color: #10201d;
+}
+
+.section {
+  max-width: 1280px;
+  margin: 0 auto 36px;
+}
+
+.section-heading {
+  margin-bottom: 18px;
+}
+
+.section-heading h2 {
+  margin: 0;
+  color: #10201d;
+}
+
+.monthly-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.financial-card {
+  padding: 24px;
+}
+
+.financial-card span {
+  display: block;
+  margin-bottom: 12px;
+  color: #687773;
+}
+
+.financial-card strong {
+  font-size: 26px;
+  color: #10201d;
+}
+
+.category-card {
+  padding: 26px;
+}
+
+.category-row {
+  margin-bottom: 24px;
+}
+
+.category-row:last-child {
+  margin-bottom: 0;
+}
+
+.category-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 9px;
+  gap: 20px;
+}
+
+.category-info > div {
+  display: flex;
+  gap: 12px;
+}
+
+.category-info strong {
+  color: #10201d;
+}
+
+.category-info span {
+  color: #71807b;
+}
+
+.progress-track {
+  width: 100%;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7eeeb;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #176f62;
+}
+
+.empty-card {
+  padding: 32px;
+}
+
+.empty-card h3 {
+  margin-top: 0;
+}
+
+.empty-card p {
+  color: #687773;
+}
+
+.trend-table-wrapper {
+  overflow-x: auto;
+}
+
+.trend-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.trend-table th,
+.trend-table td {
+  padding: 17px 20px;
+  text-align: left;
+  border-bottom: 1px solid #edf1ef;
+}
+
+.trend-table th {
+  color: #687773;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.trend-table td {
+  color: #24332f;
+}
+
+.health-card {
+  padding: 28px;
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 32px;
+}
+
+.health-main {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.health-main > span:first-child {
+  color: #687773;
+}
+
+.health-main strong {
+  font-size: 42px;
+  color: #10201d;
+}
+
+.health-rating {
+  width: fit-content;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: #e5f3ef;
+  color: #176f62;
+  font-weight: 700;
+}
+
+.health-breakdown {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.health-breakdown div {
+  padding: 18px;
+  border-radius: 12px;
+  background: #f5f7f6;
+}
+
+.health-breakdown span,
+.health-breakdown strong {
+  display: block;
+}
+
+.health-breakdown span {
+  margin-bottom: 8px;
+  color: #687773;
+  font-size: 14px;
+}
+
+.health-breakdown strong {
+  font-size: 22px;
+  color: #10201d;
+}
+
+.dashboard-loading,
+.dashboard-error {
+  max-width: 600px;
+  margin: 120px auto;
+  text-align: center;
+}
+
+.dashboard-loading p,
+.dashboard-error p {
+  color: #687773;
+}
+
+.dashboard-error button {
+  border: 0;
+  border-radius: 9px;
+  padding: 12px 20px;
+  background: #176f62;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .dashboard-page {
+    padding: 28px;
+  }
+
+  .summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .monthly-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .health-card {
+    grid-template-columns: 1fr;
+  }
+
+  .health-breakdown {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-page {
+    padding: 20px;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+  }
+
+  .dashboard-header h1 {
+    font-size: 36px;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .health-breakdown {
+    grid-template-columns: 1fr;
+  }
+}
 }
