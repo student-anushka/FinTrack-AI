@@ -1,382 +1,453 @@
-import { useEffect, useState } from "react";
+
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import dashboardApi from "../../api/dashboardApi";
 
-function formatCurrency(value) {
-  const amount = Number(value || 0);
+const initialDashboard = {
+  summary: null,
+  categorySpending: [],
+  monthlyTrends: [],
+  budgetUtilization: [],
+  goalProgress: [],
+  financialHealth: null,
+  recentActivity: [],
+};
 
+function formatCurrency(value) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(amount);
+    maximumFractionDigits: 2,
+  }).format(Number(value) || 0);
 }
 
-function formatPercentage(value) {
-  return `${Number(value || 0).toFixed(1)}%`;
+function formatDate(value) {
+  if (!value) return "—";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
-function Dashboard() {
+function getErrorMessage(error) {
+  return (
+    error?.response?.data?.message ||
+    error?.response?.data?.error ||
+    "Unable to load dashboard data. Please try again."
+  );
+}
+
+function ProgressRow({ label, value, detail }) {
+  const numericValue = Math.max(0, Math.min(100, Number(value) || 0));
+
+  return (
+    <div className="dashboard-progress-item">
+      <div className="dashboard-progress-label">
+        <span>{label}</span>
+        <span>{detail ?? `${numericValue.toFixed(0)}%`}</span>
+      </div>
+
+      <div
+        className="dashboard-progress-track"
+        role="progressbar"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={numericValue}
+      >
+        <div
+          className="dashboard-progress-fill"
+          style={{ width: `${numericValue}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+export default function Dashboard() {
   const navigate = useNavigate();
 
-  const [summary, setSummary] = useState(null);
-  const [categorySpending, setCategorySpending] = useState([]);
-  const [monthlyTrends, setMonthlyTrends] = useState([]);
-  const [financialHealth, setFinancialHealth] = useState(null);
-
+  const [summary, setSummary] = useState(initialDashboard.summary);
+  const [categorySpending, setCategorySpending] = useState(
+    initialDashboard.categorySpending,
+  );
+  const [monthlyTrends, setMonthlyTrends] = useState(
+    initialDashboard.monthlyTrends,
+  );
+  const [budgetUtilization, setBudgetUtilization] = useState(
+    initialDashboard.budgetUtilization,
+  );
+  const [goalProgress, setGoalProgress] = useState(
+    initialDashboard.goalProgress,
+  );
+  const [financialHealth, setFinancialHealth] = useState(
+    initialDashboard.financialHealth,
+  );
+  const [recentActivity, setRecentActivity] = useState(
+    initialDashboard.recentActivity,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    loadDashboard();
+  const loadDashboard = useCallback(async (signal) => {
+    const [
+      summaryResult,
+      categoryResult,
+      trendsResult,
+      budgetResult,
+      goalsResult,
+      healthResult,
+      activityResult,
+    ] = await Promise.all([
+      dashboardApi.getSummary({ signal }),
+      dashboardApi.getCategorySpending({ signal }),
+      dashboardApi.getMonthlyTrends({ signal }),
+      dashboardApi.getBudgetUtilization({ signal }),
+      dashboardApi.getGoalProgress({ signal }),
+      dashboardApi.getFinancialHealth({ signal }),
+      dashboardApi.getRecentActivity({ signal }),
+    ]);
+
+    setSummary(summaryResult);
+    setCategorySpending(
+      Array.isArray(categoryResult) ? categoryResult : [],
+    );
+    setMonthlyTrends(
+      Array.isArray(trendsResult) ? trendsResult : [],
+    );
+    setBudgetUtilization(
+      Array.isArray(budgetResult) ? budgetResult : [],
+    );
+    setGoalProgress(
+      Array.isArray(goalsResult) ? goalsResult : [],
+    );
+    setFinancialHealth(healthResult);
+    setRecentActivity(
+      Array.isArray(activityResult) ? activityResult : [],
+    );
+    setError("");
   }, []);
 
-  const loadDashboard = async () => {
-    try {
-      setLoading(true);
-      setError("");
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
 
-      const [
-        summaryData,
-        categoryData,
-        monthlyData,
-        healthData,
-      ] = await Promise.all([
-        dashboardApi.getSummary(),
-        dashboardApi.getCategorySpending(),
-        dashboardApi.getMonthlyTrends(),
-        dashboardApi.getFinancialHealth(),
-      ]);
+    async function fetchDashboard() {
+      try {
+        await loadDashboard(controller.signal);
+      } catch (err) {
+        if (!active || err?.name === "CanceledError" ||
+          err?.name === "AbortError" ||
+          err?.code === "ERR_CANCELED") {
+          return;
+        }
 
-      setSummary(summaryData);
-      setCategorySpending(categoryData || []);
-      setMonthlyTrends(monthlyData || []);
-      setFinancialHealth(healthData);
-    } catch (err) {
-      console.error("Dashboard loading failed:", err);
+        if ([401, 403].includes(err?.response?.status)) {
+          localStorage.removeItem("jwt_token");
+          navigate("/login", { replace: true });
+          return;
+        }
 
-      if (err.response?.status === 401 || err.response?.status === 403) {
-        localStorage.removeItem("jwt_token");
-        navigate("/login");
-        return;
+        setError(getErrorMessage(err));
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
       }
-
-      setError(
-        err.response?.data?.message ||
-        "Unable to load your dashboard. Please try again."
-      );
-    } finally {
-      setLoading(false);
     }
-  };
 
-  const handleLogout = () => {
-    localStorage.removeItem("jwt_token");
-    navigate("/login");
-  };
+    void fetchDashboard();
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [loadDashboard, navigate]);
+
+  const healthBreakdown = [
+    {
+      label: "Savings",
+      value: financialHealth?.savingsScore,
+    },
+    {
+      label: "Expense control",
+      value: financialHealth?.expenseControlScore,
+    },
+    {
+      label: "Budget management",
+      value: financialHealth?.budgetScore,
+    },
+    {
+      label: "Financial goals",
+      value: financialHealth?.goalScore,
+    },
+  ];
 
   if (loading) {
     return (
-      <div className="dashboard-page">
-        <div className="dashboard-loading">
-          <h2>Loading your FinTrack dashboard...</h2>
-          <p>Fetching your financial data.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="dashboard-page">
-        <div className="dashboard-error">
-          <h2>Something went wrong</h2>
-          <p>{error}</p>
-
-          <button onClick={loadDashboard}>
-            Try Again
-          </button>
-        </div>
-      </div>
+      <main className="dashboard-page">
+        <p role="status">Loading your financial dashboard…</p>
+      </main>
     );
   }
 
   return (
-    <div className="dashboard-page">
+    <main className="dashboard-page">
       <header className="dashboard-header">
         <div>
-          <p className="eyebrow">FINTRACK DASHBOARD</p>
-
-          <h1>Good to see you</h1>
-
-          <p className="dashboard-subtitle">
-            Understand your income, spending, savings and financial
-            health in one place.
-          </p>
+          <p className="dashboard-eyebrow">FINTRACK OVERVIEW</p>
+          <h1>Financial Dashboard</h1>
+          <p>Track your income, expenses, budgets, and financial goals.</p>
         </div>
 
         <button
-          className="logout-button"
-          onClick={handleLogout}
+          className="dashboard-primary-button"
+          type="button"
+          onClick={() => navigate("/expenses")}
         >
-          Logout
+          Manage expenses
         </button>
       </header>
 
-      {/* SUMMARY */}
-
-      <section className="summary-grid">
-        <div className="summary-card">
-          <p>Total Income</p>
-          <h2>
-            {formatCurrency(summary?.totalIncome)}
-          </h2>
+      {error && (
+        <div className="dashboard-error" role="alert">
+          <p>{error}</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </button>
         </div>
+      )}
 
-        <div className="summary-card">
-          <p>Total Expense</p>
-          <h2>
-            {formatCurrency(summary?.totalExpense)}
-          </h2>
-        </div>
+      <section className="dashboard-stats-grid" aria-label="Financial summary">
+        <article className="dashboard-card">
+          <p className="dashboard-label">Total income</p>
+          <h2>{formatCurrency(summary?.totalIncome)}</h2>
+        </article>
 
-        <div className="summary-card">
-          <p>Total Savings</p>
-          <h2>
-            {formatCurrency(summary?.totalSavings)}
-          </h2>
-        </div>
+        <article className="dashboard-card">
+          <p className="dashboard-label">Total expenses</p>
+          <h2>{formatCurrency(summary?.totalExpense)}</h2>
+        </article>
 
-        <div className="summary-card">
-          <p>Savings Rate</p>
-          <h2>
-            {formatPercentage(summary?.savingsRate)}
-          </h2>
-        </div>
+        <article className="dashboard-card">
+          <p className="dashboard-label">Total savings</p>
+          <h2>{formatCurrency(summary?.totalSavings)}</h2>
+        </article>
+
+        <article className="dashboard-card">
+          <p className="dashboard-label">Savings rate</p>
+          <h2>{Number(summary?.savingsRate ?? 0).toFixed(1)}%</h2>
+        </article>
       </section>
 
-      {/* CURRENT MONTH */}
+      <section className="dashboard-content-grid">
+        <article className="dashboard-card">
+          <h2 className="dashboard-section-title">This month</h2>
 
-      <section className="section">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">CURRENT MONTH</p>
-            <h2>Monthly overview</h2>
-          </div>
-        </div>
-
-        <div className="monthly-grid">
-          <div className="financial-card">
+          <div className="dashboard-detail-row">
             <span>Income</span>
-
-            <strong>
-              {formatCurrency(summary?.currentMonthIncome)}
-            </strong>
+            <strong>{formatCurrency(summary?.currentMonthIncome)}</strong>
           </div>
 
-          <div className="financial-card">
+          <div className="dashboard-detail-row">
             <span>Expenses</span>
-
-            <strong>
-              {formatCurrency(summary?.currentMonthExpense)}
-            </strong>
+            <strong>{formatCurrency(summary?.currentMonthExpense)}</strong>
           </div>
 
-          <div className="financial-card">
-            <span>Net Savings</span>
-
-            <strong>
+          <div className="dashboard-detail-row">
+            <span>Net savings</span>
+            <strong className="dashboard-net-savings">
               {formatCurrency(
-                Number(summary?.currentMonthIncome || 0) -
-                Number(summary?.currentMonthExpense || 0)
+                Number(summary?.currentMonthIncome ?? 0) -
+                Number(summary?.currentMonthExpense ?? 0),
               )}
             </strong>
           </div>
-        </div>
+        </article>
+
+        <article className="dashboard-card">
+          <h2 className="dashboard-section-title">Financial health</h2>
+
+          <div className="dashboard-health-score">
+            {financialHealth?.totalScore ?? 0}
+            <span>/100</span>
+          </div>
+
+          <p className="dashboard-health-rating">
+            {financialHealth?.rating || "Not available"}
+          </p>
+
+          {healthBreakdown.map((item) => (
+            <ProgressRow
+              key={item.label}
+              label={item.label}
+              value={item.value}
+            />
+          ))}
+        </article>
       </section>
 
-      {/* CATEGORY SPENDING */}
+      <section className="dashboard-content-grid">
+        <article className="dashboard-card">
+          <h2 className="dashboard-section-title">Category spending</h2>
 
-      <section className="section">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">SPENDING ANALYSIS</p>
-            <h2>Where your money goes</h2>
-          </div>
-        </div>
-
-        {categorySpending.length === 0 ? (
-          <div className="empty-card">
-            <h3>No expense data yet</h3>
-            <p>
-              Add some expenses to see your spending breakdown.
-            </p>
-          </div>
-        ) : (
-          <div className="category-card">
-            {categorySpending.map((category) => (
+          {categorySpending.length === 0 ? (
+            <p className="dashboard-empty">No category spending available yet.</p>
+          ) : (
+            categorySpending.map((item, index) => (
               <div
-                className="category-row"
-                key={category.categoryId}
+                className="dashboard-category-item"
+                key={item.categoryId ?? item.categoryName ?? index}
               >
-                <div className="category-info">
-                  <div>
-                    <strong>
-                      {category.categoryName}
-                    </strong>
-
-                    <span>
-                      {formatCurrency(category.totalAmount)}
-                    </span>
-                  </div>
-
-                  <span>
-                    {formatPercentage(category.percentage)}
-                  </span>
+                <div>
+                  <strong>{item.categoryName || "Uncategorized"}</strong>
+                  <p>{formatCurrency(item.totalAmount)}</p>
                 </div>
-
-                <div className="progress-track">
-                  <div
-                    className="progress-fill"
-                    style={{
-                      width: `${Math.min(
-                        Number(category.percentage || 0),
-                        100
-                      )}%`,
-                    }}
-                  />
-                </div>
+                <span className="dashboard-category-percentage">
+                  {Number(item.percentage ?? 0).toFixed(1)}%
+                </span>
               </div>
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </article>
+
+        <article className="dashboard-card">
+          <h2 className="dashboard-section-title">Budget utilization</h2>
+
+          {budgetUtilization.length === 0 ? (
+            <p className="dashboard-empty">No budget data available yet.</p>
+          ) : (
+            budgetUtilization.map((item, index) => (
+              <ProgressRow
+                key={item.budgetId ?? item.categoryId ?? index}
+                label={item.categoryName || item.name || "Budget"}
+                value={
+                  item.utilizationPercentage ??
+                  item.percentage ??
+                  item.utilization ??
+                  0
+                }
+                detail={`${Number(
+                  item.utilizationPercentage ??
+                  item.percentage ??
+                  item.utilization ??
+                  0,
+                ).toFixed(1)}% used`}
+              />
+            ))
+          )}
+        </article>
       </section>
 
-      {/* MONTHLY TRENDS */}
+      <section className="dashboard-content-grid">
+        <article className="dashboard-card">
+          <h2 className="dashboard-section-title">Goal progress</h2>
 
-      <section className="section">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">FINANCIAL TREND</p>
-            <h2>Monthly income vs expenses</h2>
-          </div>
-        </div>
+          {goalProgress.length === 0 ? (
+            <p className="dashboard-empty">No financial goals available yet.</p>
+          ) : (
+            goalProgress.map((item, index) => (
+              <ProgressRow
+                key={item.goalId ?? item.id ?? index}
+                label={item.goalName || item.name || "Financial goal"}
+                value={
+                  item.progressPercentage ??
+                  item.percentage ??
+                  item.progress ??
+                  0
+                }
+              />
+            ))
+          )}
+        </article>
 
-        {monthlyTrends.length === 0 ? (
-          <div className="empty-card">
-            <h3>No monthly data yet</h3>
-            <p>
-              Your monthly trend will appear once you have
-              income or expense records.
-            </p>
-          </div>
+        <article className="dashboard-card">
+          <h2 className="dashboard-section-title">Monthly trends</h2>
+
+          {monthlyTrends.length === 0 ? (
+            <p className="dashboard-empty">No monthly trends available yet.</p>
+          ) : (
+            <div className="dashboard-table-wrapper">
+              <table className="dashboard-table">
+                <thead>
+                  <tr>
+                    <th>Month</th>
+                    <th>Income</th>
+                    <th>Expenses</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthlyTrends.map((item, index) => (
+                    <tr key={`${item.year ?? ""}-${item.month ?? index}`}>
+                      <td>
+                        {item.monthName ||
+                          `${item.month ?? ""}/${item.year ?? ""}`}
+                      </td>
+                      <td>{formatCurrency(item.income)}</td>
+                      <td>{formatCurrency(item.expense)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </article>
+      </section>
+
+      <section className="dashboard-card">
+        <h2 className="dashboard-section-title">Recent activity</h2>
+
+        {recentActivity.length === 0 ? (
+          <p className="dashboard-empty">No recent activity available yet.</p>
         ) : (
-          <div className="trend-table-wrapper">
-            <table className="trend-table">
+          <div className="dashboard-table-wrapper">
+            <table className="dashboard-table">
               <thead>
                 <tr>
-                  <th>Month</th>
-                  <th>Income</th>
-                  <th>Expense</th>
-                  <th>Net</th>
+                  <th>Activity</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Date</th>
                 </tr>
               </thead>
-
               <tbody>
-                {monthlyTrends.map((month) => {
-                  const net =
-                    Number(month.income || 0) -
-                    Number(month.expense || 0);
-
-                  return (
-                    <tr
-                      key={`${month.year}-${month.month}`}
-                    >
-                      <td>
-                        {month.monthName} {month.year}
-                      </td>
-
-                      <td>
-                        {formatCurrency(month.income)}
-                      </td>
-
-                      <td>
-                        {formatCurrency(month.expense)}
-                      </td>
-
-                      <td>
-                        {formatCurrency(net)}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {recentActivity.map((item, index) => (
+                  <tr key={item.id ?? item.transactionId ?? index}>
+                    <td>
+                      {item.title ||
+                        item.description ||
+                        item.name ||
+                        "Transaction"}
+                    </td>
+                    <td>{item.type || item.transactionType || "—"}</td>
+                    <td>
+                      {item.amount == null
+                        ? "—"
+                        : formatCurrency(item.amount)}
+                    </td>
+                    <td>
+                      {formatDate(
+                        item.date ||
+                        item.createdAt ||
+                        item.expenseDate ||
+                        item.incomeDate,
+                      )}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         )}
       </section>
-
-      {/* FINANCIAL HEALTH */}
-
-      <section className="section">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">FINANCIAL HEALTH</p>
-            <h2>Your financial health score</h2>
-          </div>
-        </div>
-
-        {financialHealth && (
-          <div className="health-card">
-            <div className="health-main">
-              <span>Overall Score</span>
-
-              <strong>
-                {Number(
-                  financialHealth.totalScore || 0
-                ).toFixed(1)}
-                /100
-              </strong>
-
-              <span className="health-rating">
-                {financialHealth.rating}
-              </span>
-            </div>
-
-            <div className="health-breakdown">
-              <div>
-                <span>Savings</span>
-                <strong>
-                  {financialHealth.savingsScore}
-                </strong>
-              </div>
-
-              <div>
-                <span>Expense Control</span>
-                <strong>
-                  {financialHealth.expenseControlScore}
-                </strong>
-              </div>
-
-              <div>
-                <span>Budget</span>
-                <strong>
-                  {financialHealth.budgetScore}
-                </strong>
-              </div>
-
-              <div>
-                <span>Goals</span>
-                <strong>
-                  {financialHealth.goalScore}
-                </strong>
-              </div>
-            </div>
-          </div>
-        )}
-      </section>
-    </div>
+    </main>
   );
 }
-
-export default Dashboard;
