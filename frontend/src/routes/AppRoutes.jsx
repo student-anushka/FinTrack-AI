@@ -5,6 +5,7 @@ import Register from "../pages/auth/Register";
 import Dashboard from "../pages/dashboard/Dashboard";
 import Income from "../pages/income/Income";
 import Expenses from "../pages/expense/Expenses";
+import Budget from "../pages/budget/Budget";
 
 import AppLayout from "../components/layout/AppLayout";
 import ProtectedRoute from "./ProtectedRoute";
@@ -21,6 +22,7 @@ const AppRoutes = () => {
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/expenses" element={<Expenses />} />
+            <Route path="/budgets" element={<Budget />} />
             <Route element={<Income />} path="/income" />
           </Route>
         </Route>
