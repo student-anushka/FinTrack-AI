@@ -9,6 +9,7 @@ import Budget from "../pages/budget/Budget";
 import Goals from "../pages/goal/Goals";
 import AppLayout from "../components/layout/AppLayout";
 import ProtectedRoute from "./ProtectedRoute";
+import FinancialInsights from "../pages/dashboard/FinancialInsights";
 
 const AppRoutes = () => {
   return (
@@ -25,6 +26,10 @@ const AppRoutes = () => {
             <Route path="/budgets" element={<Budget />} />
             <Route path="/goals" element={<Goals />} />
             <Route element={<Income />} path="/income" />
+            <Route
+              path="/financial-insights"
+              element={<FinancialInsights />}
+            />
           </Route>
         </Route>
 

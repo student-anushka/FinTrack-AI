@@ -35,6 +35,11 @@ const dashboardApi = {
     const response = await axiosInstance.get("/dashboard/recent-activity");
     return response.data;
   },
+
+  getFinancialInsights: async () => {
+    const response = await axiosInstance.get("/dashboard/financial-insights");
+    return response.data;
+  },
 };
 
 export default dashboardApi;
