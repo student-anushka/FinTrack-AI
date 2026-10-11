@@ -6,7 +6,7 @@ import Dashboard from "../pages/dashboard/Dashboard";
 import Income from "../pages/income/Income";
 import Expenses from "../pages/expense/Expenses";
 import Budget from "../pages/budget/Budget";
-
+import Goals from "../pages/goal/Goals";
 import AppLayout from "../components/layout/AppLayout";
 import ProtectedRoute from "./ProtectedRoute";
 
@@ -23,6 +23,7 @@ const AppRoutes = () => {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/expenses" element={<Expenses />} />
             <Route path="/budgets" element={<Budget />} />
+            <Route path="/goals" element={<Goals />} />
             <Route element={<Income />} path="/income" />
           </Route>
         </Route>
