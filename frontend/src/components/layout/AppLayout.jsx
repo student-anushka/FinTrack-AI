@@ -1,5 +1,6 @@
 
 import { NavLink, Outlet } from "react-router-dom";
+import NotificationBell from "../notifications/NotificationBell";
 import "./AppLayout.css";
 
 const AppLayout = () => {
@@ -29,7 +30,10 @@ const AppLayout = () => {
 
                 <p className="sidebar-section-label">WORKSPACE</p>
 
-                <nav className="sidebar-navigation" aria-label="Main navigation">
+                <nav
+                    className="sidebar-navigation"
+                    aria-label="Main navigation"
+                >
                     {navigationItems.map((item) => (
                         <NavLink
                             key={item.to}
@@ -64,9 +68,22 @@ const AppLayout = () => {
                 </div>
             </aside>
 
-            <main className="app-main">
-                <Outlet />
-            </main>
+            <div className="app-main">
+                <header className="app-topbar">
+                    <div className="app-topbar-title">
+                        <span>FinTrack</span>
+                        <p>Your personal finance workspace</p>
+                    </div>
+
+                    <div className="app-topbar-actions">
+                        <NotificationBell />
+                    </div>
+                </header>
+
+                <main className="app-page-content">
+                    <Outlet />
+                </main>
+            </div>
         </div>
     );
 };
