@@ -232,10 +232,10 @@ export default function Expenses() {
             };
 
             try {
-                const data = await expenseApi.getExpenses({
-                    ...params,
-                    signal: controller.signal,
-                });
+                const data = await expenseApi.getExpenses(
+                    params,
+                    { signal: controller.signal },
+                );
 
                 if (!active) return;
 
