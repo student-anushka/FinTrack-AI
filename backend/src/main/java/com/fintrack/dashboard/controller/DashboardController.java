@@ -13,6 +13,7 @@ import com.fintrack.budget.service.BudgetService;
 import com.fintrack.dashboard.dto.BudgetUtilizationResponse;
 import com.fintrack.budget.dto.BudgetResponse;
 import java.util.List;
+import com.fintrack.dashboard.dto.FinancialInsightResponse;
 import com.fintrack.dashboard.dto.RecentActivityResponse;
 import com.fintrack.dashboard.dto.FinancialHealthResponse;
 import com.fintrack.dashboard.dto.GoalProgressResponse;
@@ -146,5 +147,15 @@ public class DashboardController {
         List<RecentActivityResponse> response = dashboardService.getRecentActivity(userId);
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/financial-insights")
+    public ResponseEntity<List<FinancialInsightResponse>> getFinancialInsights(
+                    Authentication authentication) {
+
+            Long userId = getLoggedInUserId(authentication);
+
+            return ResponseEntity.ok(
+                            dashboardService.getFinancialInsights(userId));
     }
 }

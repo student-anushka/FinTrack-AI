@@ -14,7 +14,8 @@ import com.fintrack.income.repository.IncomeRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.GetMapping;
-
+import com.fintrack.dashboard.dto.FinancialInsightResponse;
+import java.util.Comparator;
 import com.fintrack.expense.entity.Expense;
 import com.fintrack.goal.entity.GoalContribution;
 import com.fintrack.goal.repository.GoalContributionRepository;
@@ -610,5 +611,95 @@ public class DashboardService {
                 }
 
                 return activities;
+        }
+
+        public List<FinancialInsightResponse> getFinancialInsights(Long userId) {
+
+                List<FinancialInsightResponse> insights = new ArrayList<>();
+
+                BigDecimal totalIncome = incomeRepository.calculateTotalIncome(userId);
+                BigDecimal totalExpense = expenseRepository.calculateTotalExpense(userId);
+
+                if (totalIncome == null) {
+                        totalIncome = BigDecimal.ZERO;
+                }
+
+                if (totalExpense == null) {
+                        totalExpense = BigDecimal.ZERO;
+                }
+
+                BigDecimal savings = totalIncome.subtract(totalExpense);
+
+                // 1. Savings and spending insights
+                if (totalIncome.compareTo(BigDecimal.ZERO) > 0) {
+
+                        BigDecimal savingsRate = savings
+                                        .multiply(BigDecimal.valueOf(100))
+                                        .divide(totalIncome, 2, RoundingMode.HALF_UP);
+
+                        if (savings.compareTo(BigDecimal.ZERO) < 0) {
+
+                                insights.add(new FinancialInsightResponse(
+                                                "SPENDING",
+                                                "Expenses exceed income",
+                                                "Your recorded expenses exceed your recorded income. Review your spending.",
+                                                "HIGH"));
+
+                        } else if (savingsRate.compareTo(BigDecimal.valueOf(20)) >= 0) {
+
+                                insights.add(new FinancialInsightResponse(
+                                                "SAVINGS",
+                                                "Healthy savings rate",
+                                                "Your savings rate is " + savingsRate
+                                                                + "%. Keep working toward your financial goals.",
+                                                "SUCCESS"));
+
+                        } else {
+
+                                insights.add(new FinancialInsightResponse(
+                                                "SAVINGS",
+                                                "Opportunity to save more",
+                                                "Your savings rate is " + savingsRate
+                                                                + "%. Review discretionary expenses for potential savings.",
+                                                "INFO"));
+                        }
+
+                } else if (totalExpense.compareTo(BigDecimal.ZERO) > 0) {
+
+                        insights.add(new FinancialInsightResponse(
+                                        "INCOME",
+                                        "Income record needed",
+                                        "You have recorded expenses but no income. Add your income records for a more complete financial overview.",
+                                        "INFO"));
+                }
+
+                // 2. Find the largest spending category
+                List<CategorySpendingResponse> categories = getCategoryWiseSpending(userId);
+
+                CategorySpendingResponse largestCategory = null;
+
+                for (CategorySpendingResponse category : categories) {
+
+                        if (largestCategory == null
+                                        || category.getTotalAmount().compareTo(
+                                                        largestCategory.getTotalAmount()) > 0) {
+
+                                largestCategory = category;
+                        }
+                }
+
+                if (largestCategory != null) {
+
+                        insights.add(new FinancialInsightResponse(
+                                        "CATEGORY",
+                                        "Largest spending category",
+                                        largestCategory.getCategoryName()
+                                                        + " accounts for "
+                                                        + largestCategory.getPercentage()
+                                                        + "% of your recorded expenses.",
+                                        "INFO"));
+                }
+
+                return insights;
         }
 }

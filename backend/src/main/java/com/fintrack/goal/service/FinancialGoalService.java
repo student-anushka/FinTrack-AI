@@ -28,7 +28,8 @@ import com.fintrack.goal.entity.FinancialGoal;
 import com.fintrack.goal.entity.GoalContribution;
 import com.fintrack.goal.repository.FinancialGoalRepository;
 import com.fintrack.goal.repository.GoalContributionRepository;
-
+import com.fintrack.notification.service.NotificationService;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class FinancialGoalService {
@@ -36,15 +37,18 @@ public class FinancialGoalService {
         private final FinancialGoalRepository goalRepository;
         private final GoalContributionRepository contributionRepository;
         private final UserRepository userRepository;
+        private final NotificationService notificationService;
 
         public FinancialGoalService(
                         FinancialGoalRepository goalRepository,
                         GoalContributionRepository contributionRepository,
-                        UserRepository userRepository) {
+                        UserRepository userRepository,
+                        NotificationService notificationService) {
 
                 this.goalRepository = goalRepository;
                 this.contributionRepository = contributionRepository;
                 this.userRepository = userRepository;
+                this.notificationService = notificationService;
         }
 
         public FinancialGoalResponse createGoal(
@@ -131,6 +135,7 @@ public class FinancialGoalService {
                 goalRepository.delete(goal);
         }
 
+        @Transactional
         public FinancialGoalResponse addContribution(
                         Long goalId,
                         CreateContributionRequest request,
@@ -138,34 +143,23 @@ public class FinancialGoalService {
 
                 FinancialGoal goal = getOwnedGoal(goalId, authentication);
 
-                validateContributionDate(
-                                request.getContributionDate());
+                validateContributionDate(request.getContributionDate());
 
-                BigDecimal newCurrentAmount = goal.getCurrentAmount()
-                                .add(request.getAmount());
+                BigDecimal previousAmount = goal.getCurrentAmount();
 
-                if (newCurrentAmount.compareTo(
-                                goal.getTargetAmount()) > 0) {
+                BigDecimal newCurrentAmount = previousAmount.add(request.getAmount());
 
+                if (newCurrentAmount.compareTo(goal.getTargetAmount()) > 0) {
                         throw new InvalidFinancialGoalException(
                                         "Contribution exceeds the remaining goal amount");
                 }
 
                 GoalContribution contribution = new GoalContribution();
-
-                contribution.setAmount(
-                                request.getAmount());
-
-                contribution.setContributionDate(
-                                request.getContributionDate());
-
-                contribution.setNote(
-                                request.getNote());
-
+                contribution.setAmount(request.getAmount());
+                contribution.setContributionDate(request.getContributionDate());
+                contribution.setNote(request.getNote());
                 contribution.setGoal(goal);
-
-                contribution.setCreatedAt(
-                                LocalDateTime.now());
+                contribution.setCreatedAt(LocalDateTime.now());
 
                 contributionRepository.save(contribution);
 
@@ -173,6 +167,18 @@ public class FinancialGoalService {
                 goal.setUpdatedAt(LocalDateTime.now());
 
                 FinancialGoal updatedGoal = goalRepository.save(goal);
+
+                boolean goalJustCompleted = previousAmount.compareTo(goal.getTargetAmount()) < 0
+                                && newCurrentAmount.compareTo(goal.getTargetAmount()) >= 0;
+
+                if (goalJustCompleted) {
+                        notificationService.createNotification(
+                                        goal.getUser().getId(),
+                                        "GOAL_COMPLETED",
+                                        "Savings goal completed!",
+                                        "Congratulations! You've reached your savings goal: "
+                                                        + goal.getName());
+                }
 
                 return mapToResponse(updatedGoal);
         }

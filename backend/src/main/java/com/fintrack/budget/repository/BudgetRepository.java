@@ -16,6 +16,12 @@ public interface BudgetRepository
                 extends JpaRepository<Budget, Long>,
                 JpaSpecificationExecutor<Budget> {
 
+        List<Budget> findAllByUserIdAndCategoryIdAndStartDateLessThanEqualAndEndDateGreaterThanEqual(
+                Long userId,
+                Long categoryId,
+                LocalDate expenseDate,
+                LocalDate expenseDateAgain);  
+                            
         Page<Budget> findByUserId(Long userId, Pageable pageable);
 
         Optional<Budget> findByIdAndUserId(Long id, Long userId);

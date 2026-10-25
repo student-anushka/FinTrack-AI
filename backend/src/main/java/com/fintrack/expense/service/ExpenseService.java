@@ -13,7 +13,11 @@ import com.fintrack.expense.entity.Expense;
 import com.fintrack.expense.repository.CategoryRepository;
 import com.fintrack.expense.repository.ExpenseRepository;
 import com.fintrack.expense.specification.ExpenseSpecification;
-
+import com.fintrack.budget.entity.Budget;
+import com.fintrack.budget.repository.BudgetRepository;
+import com.fintrack.notification.service.NotificationService;
+import java.math.BigDecimal;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -33,15 +37,21 @@ public class ExpenseService {
         private final ExpenseRepository expenseRepository;
         private final CategoryRepository categoryRepository;
         private final UserRepository userRepository;
+        private final BudgetRepository budgetRepository;
+        private final NotificationService notificationService;
 
         public ExpenseService(
                         ExpenseRepository expenseRepository,
                         CategoryRepository categoryRepository,
-                        UserRepository userRepository) {
+                        UserRepository userRepository,
+                        BudgetRepository budgetRepository,
+                        NotificationService notificationService) {
 
                 this.expenseRepository = expenseRepository;
                 this.categoryRepository = categoryRepository;
                 this.userRepository = userRepository;
+                this.budgetRepository = budgetRepository;
+                this.notificationService = notificationService;
         }
 
         // =========================
@@ -74,6 +84,11 @@ public class ExpenseService {
                 expense.setUpdatedAt(now);
 
                 Expense savedExpense = expenseRepository.save(expense);
+
+                checkBudgetAlerts(
+                                user.getId(),
+                                savedExpense.getCategory().getId(),
+                                savedExpense.getExpenseDate());
 
                 return mapToResponse(savedExpense);
         }
@@ -201,6 +216,11 @@ public class ExpenseService {
 
                 Expense updatedExpense = expenseRepository.save(expense);
 
+                checkBudgetAlerts(
+                                user.getId(),
+                                updatedExpense.getCategory().getId(),
+                                updatedExpense.getExpenseDate());
+                                
                 return mapToResponse(updatedExpense);
         }
 
@@ -369,5 +389,60 @@ public class ExpenseService {
                                 expense.getPaymentMethod(),
                                 expense.getCategory().getId(),
                                 expense.getCategory().getName());
+        }
+
+        private void checkBudgetAlerts(
+                        Long userId,
+                        Long categoryId,
+                        java.time.LocalDate expenseDate) {
+
+                List<Budget> budgets = budgetRepository
+                                .findAllByUserIdAndCategoryIdAndStartDateLessThanEqualAndEndDateGreaterThanEqual(
+                                                userId,
+                                                categoryId,
+                                                expenseDate,
+                                                expenseDate);
+
+                for (Budget budget : budgets) {
+                        BigDecimal spent = expenseRepository.calculateTotalSpent(
+                                        userId,
+                                        budget.getCategory().getId(),
+                                        budget.getStartDate(),
+                                        budget.getEndDate());
+
+                        if (spent == null) {
+                                spent = BigDecimal.ZERO;
+                        }
+
+                        BigDecimal budgetAmount = budget.getAmount();
+
+                        if (budgetAmount == null || budgetAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                                continue;
+                        }
+
+                        BigDecimal percentageUsed = spent
+                                        .multiply(BigDecimal.valueOf(100))
+                                        .divide(budgetAmount, 2, java.math.RoundingMode.HALF_UP);
+
+                        if (percentageUsed.compareTo(BigDecimal.valueOf(100)) >= 0) {
+                                notificationService.createBudgetAlertIfAbsent(
+                                                userId,
+                                                budget.getId(),
+                                                "EXCEEDED",
+                                                "Budget exceeded",
+                                                "You've spent " + percentageUsed
+                                                                + "% of your " + budget.getName()
+                                                                + " budget. Review your expenses.");
+                        } else if (percentageUsed.compareTo(BigDecimal.valueOf(80)) >= 0) {
+                                notificationService.createBudgetAlertIfAbsent(
+                                                userId,
+                                                budget.getId(),
+                                                "WARNING",
+                                                "Budget running low",
+                                                "You've used " + percentageUsed
+                                                                + "% of your " + budget.getName()
+                                                                + " budget.");
+                        }
+                }
         }
 }
