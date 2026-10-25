@@ -15,6 +15,7 @@ const AppLayout = () => {
         { to: "/income", icon: "＋", label: "Income" },
         { to: "/budgets", icon: "▤", label: "Budgets" },
         { to: "/goals", icon: "🎯", label: "Goals" },
+        {to: "/ai-assistant"}
     ];
 
     return (
